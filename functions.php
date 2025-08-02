@@ -1,5 +1,6 @@
 <?php
 require_once 'classes/autoload.php';
+require_once 'email_handler.php';
 // Récupération de la configuration Watermark
 $watermarkConfig = getWatermarkConfig();
 
@@ -310,6 +311,33 @@ function countPendingPayments() {
     return $count;
 }
 
-// Fonctions de gestion des commandes déplacées vers orders_helpers.php
-require_once 'orders_helpers.php';
+/**
+ * Nettoie les commandes temporaires anciennes
+ * @param string $ordersDir Répertoire des commandes
+ * @return int Nombre de fichiers supprimés
+ */
+function cleanOldTempOrders($ordersDir) {
+    $tempDir = $ordersDir . 'temp/';
+    
+    if (!is_dir($tempDir)) {
+        return 0;
+    }
+    
+    $tempFiles = glob($tempDir . '*.json');
+    $deletedCount = 0;
+    $maxAge = 20 * 3600; // 20 heures en secondes
+    
+    foreach ($tempFiles as $file) {
+        $fileAge = time() - filemtime($file);
+        
+        if ($fileAge > $maxAge) {
+            if (unlink($file)) {
+                $deletedCount++;
+                error_log("Commande temporaire supprimée (age: " . round($fileAge/3600, 1) . "h): " . basename($file));
+            }
+        }
+    }
+    
+    return $deletedCount;
+}
 ?>

@@ -247,6 +247,7 @@ class OrdersList extends CsvHandler {
             'unpaid_orders' => 0,
             'paid_orders' => 0,
             'paid_today' => 0,
+            'retrieved_today' => 0,
             'validated_orders' => 0,
             'pending_orders' => 0,
             'exported_orders' => 0,
@@ -285,6 +286,12 @@ class OrdersList extends CsvHandler {
                         break;
                     case 'retrieved':
                         $stats['retrieved_orders']++;
+                        
+                        // Compter les commandes récupérées aujourd'hui
+                        $retrievalDate = $order['retrieval_date'] ?? '';
+                        if ($retrievalDate && substr($retrievalDate, 0, 10) === $today) {
+                            $stats['retrieved_today']++;
+                        }
                         break;
                 }
             }
