@@ -1,0 +1,92 @@
+# Configuration et données sensibles
+config.php
+*.log
+
+# Données utilisateur
+data/*.json
+photos/*
+!data/.gitkeep
+
+# Commandes et exports
+commandes/*.json
+commandes/*.csv
+commandes/temp/*.json
+exports/*
+!exports/.gitkeep
+
+# Logs
+logs/*.log
+!logs/.gitkeep
+
+# Archives et sauvegardes
+archives/*
+!archives/.gitkeep
+
+# Photos utilisateur (garder la structure)
+photos/*/
+!photos/cache/
+photos/cache/thumbnails/*
+photos/cache/resized/*
+!photos/cache/thumbnails/.gitkeep
+!photos/cache/resized/.gitkeep
+
+# Fichiers de test et développement
+test_*.php
+analyse_*.php
+rapport_*.php
+nettoyage_*.php
+debug.*
+
+# Fichiers historiques et sauvegardes
+historique/
+250726_*
+final_summary.md
+production_guide.md
+config_readme.md
+CLAUDE.md
+
+# Fichiers obsolètes à nettoyer
+logger.php
+orders_helpers.php
+update_csv.php
+
+# Fichiers de cache et temporaires
+cache/
+includes/
+templates/
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Dossiers vendor/node_modules
+vendor/
+node_modules/
+
+# Fichiers système
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Fichiers de cache PHP
+*.cache
+
+# Fichiers de session PHP
+sess_*
+
+# Variables d'environnement
+.env
+.env.local
+.env.production

@@ -1,0 +1,589 @@
+/**
+ * Styles d'impression pour les bons de commande
+ * @version 2.0 - Version optimisée sans pages vides
+ */
+
+/* ==========================================
+   STYLES GÉNÉRAUX
+   ========================================== */
+
+.print-only {
+    display: none;
+}
+
+/* ==========================================
+   STYLES D'IMPRESSION
+   ========================================== */
+
+@media print {
+    /* Masquer tout sauf le contenu d'impression */
+    body * {
+        visibility: hidden;
+    }
+    
+    #print-content,
+    #print-content * {
+        visibility: visible;
+    }
+    
+    #print-content {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* ==========================================
+       CONFIGURATION DE PAGE
+       ========================================== */
+    
+    @page {
+        size: A4 landscape;
+        margin: 1cm;
+    }
+    
+    /* ==========================================
+       STRUCTURE DES PAGES
+       ========================================== */
+    
+    .print-page {
+        width: 100%;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 12px;
+        font-weight: 300;
+        color: #000;
+    }
+    
+    /* Pages d'impression - SANS saut de page automatique */
+    .print-single-page {
+        width: 100%;
+        min-height: calc(100vh - 2cm);
+        height: auto;
+        position: relative;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+    }
+    
+    /* Forcer le saut de page UNIQUEMENT entre les pages avec contenu */
+    .print-single-page:not(:last-child):not(:empty) {
+        page-break-after: always;
+    }
+    
+    /* Masquer les pages complètement vides */
+    .print-single-page:empty {
+        display: none !important;
+    }
+    
+    /* ==========================================
+       LAYOUT DES EXEMPLAIRES
+       ========================================== */
+    
+    /* Container des deux exemplaires côte à côte */
+    .print-duplicates {
+        display: flex;
+        gap: 1.5cm;
+        height: 100%;
+        position: relative;
+        min-height: calc(100vh - 4cm);
+    }
+    
+    /* Ligne pointillée de découpe verticale */
+    .print-duplicates::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        border-left: 2px dashed #999;
+        transform: translateX(-50%);
+        z-index: 10;
+    }
+    
+    /* Exemplaire individuel */
+    .print-copy {
+        flex: 1;
+        border: 2px solid #333;
+        border-radius: 8px;
+        padding: 1rem;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        box-sizing: border-box;
+        page-break-inside: avoid;
+    }
+    
+    /* Version pleine page (non utilisée actuellement) */
+    .print-copy-fullpage {
+        width: 100%;
+        border: 2px solid #333;
+        border-radius: 8px;
+        padding: 1rem;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 4cm);
+        box-sizing: border-box;
+        margin-bottom: 2cm;
+    }
+    
+    /* ==========================================
+       EN-TÊTES ET TITRES
+       ========================================== */
+    
+    .copy-main-header {
+        text-align: center;
+        margin-bottom: 0.6rem;
+        border-bottom: 3px solid #0BABDF;
+        padding-bottom: 0.3rem;
+        flex-shrink: 0;
+    }
+    
+    .copy-main-header h1 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 400;
+        color: #0A76B7;
+    }
+    
+    .copy-print-date {
+        font-size: 0.85rem;
+        font-weight: 300;
+        color: #666;
+        margin-top: 0.15rem;
+    }
+    
+    .copy-header {
+        text-align: center;
+        margin-bottom: 0.8rem;
+        border-bottom: 2px solid #0BABDF;
+        padding-bottom: 0.4rem;
+        flex-shrink: 0;
+    }
+    
+    .copy-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: #0A76B7;
+    }
+    
+    .copy-type {
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: #666;
+        margin-top: 0.2rem;
+        padding: 0.2rem 0.4rem;
+        background: #f0f8ff;
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    .copy-type.organization {
+        background: #fff0f5;
+        color: #8b0000;
+    }
+    
+    /* ==========================================
+       SECTIONS DE DÉTAILS
+       ========================================== */
+    
+    .order-details,
+    .customer-details,
+    .items-details {
+        margin-bottom: 0.8rem;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+    }
+    
+    .order-details h3,
+    .customer-details h3,
+    .items-details h3 {
+        margin: 0 0 0.4rem 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #0A76B7;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 0.2rem;
+    }
+    
+    /* Lignes de détails */
+    .detail-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 0.2rem;
+        padding: 0.15rem 0;
+        font-size: 0.8rem;
+        width: 100%;
+        min-height: 1.2em;
+    }
+    
+    .detail-row:nth-child(even) {
+        background: #f9f9f9;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+        border-radius: 3px;
+    }
+    
+    .detail-row strong {
+        flex-shrink: 0;
+        text-align: left;
+    }
+    
+    .detail-row span {
+        flex-shrink: 0;
+        text-align: right;
+        margin-left: auto;
+    }
+    
+    .highlight {
+        font-weight: bold !important;
+        font-family: 'Courier New', monospace !important;
+        font-size: 1em !important;
+        color: #d30420 !important;
+        text-align: right !important;
+        margin-left: auto !important;
+    }
+    
+    /* ==========================================
+       SECTION PHOTOS INFO (PAGE 1)
+       ========================================== */
+    
+    .photos-info {
+        margin-bottom: 1rem;
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px dashed #0BABDF;
+        flex-shrink: 0;
+    }
+    
+    .photos-info h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #0A76B7;
+    }
+    
+    .photos-info .total-section {
+        background: #e8f5e8;
+        margin: 0;
+        padding: 0.5rem;
+        border-radius: 4px;
+    }
+    
+    .photos-info small {
+        color: #666;
+        font-style: italic;
+    }
+    
+    /* ==========================================
+       TABLEAUX DE PHOTOS - HAUTEURS SYNCHRONISÉES
+       ========================================== */
+    
+    .items-details {
+        flex-grow: 1;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+        /* Forcer la même hauteur pour les deux exemplaires */
+        min-height: 0;
+    }
+    
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+        /* Permettre au tableau de grandir */
+        flex-grow: 1;
+        /* Hauteur minimum pour éviter les tableaux trop petits */
+        min-height: 200px;
+    }
+    
+    /* Synchroniser les hauteurs des copies */
+    .print-duplicates {
+        display: flex;
+        gap: 1.5cm;
+        height: 100%;
+        position: relative;
+        min-height: calc(100vh - 4cm);
+        /* Forcer l'alignement des hauteurs */
+        align-items: stretch;
+    }
+    
+    .print-copy {
+        flex: 1;
+        border: 2px solid #333;
+        border-radius: 8px;
+        padding: 1rem;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        /* Hauteur égale pour les deux exemplaires */
+        height: 100%;
+        box-sizing: border-box;
+        page-break-inside: avoid;
+    }
+    
+    .items-table th,
+    .items-table td {
+        border: 1px solid #ddd;
+        padding: 0.25rem 0.2rem;
+        text-align: left;
+        font-size: 0.8rem;
+        height: auto;
+        vertical-align: top;
+    }
+    
+    .items-table th {
+        background: #0BABDF;
+        color: white;
+        font-weight: bold;
+        font-size: 0.75rem;
+        height: auto;
+    }
+    
+    .items-table tr:nth-child(even) {
+        background: #f9f9f9;
+    }
+    
+    /* Colonne quantité centrée */
+    .items-table td:nth-child(3),
+    .items-table th:nth-child(3) {
+        text-align: center;
+    }
+    
+    /* Colonne checkbox centrée (organisation) */
+    .items-table td:nth-child(4),
+    .items-table th:nth-child(4) {
+        text-align: center;
+        width: 2rem;
+    }
+    
+    .total-section {
+        text-align: right;
+        padding: 0.25rem;
+        background: #e8f5e8;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-top: auto;
+        flex-shrink: 0;
+    }
+    
+    /* ==========================================
+       PIED DE PAGE
+       ========================================== */
+    
+    .print-footer {
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid #ddd;
+        flex-shrink: 0;
+    }
+    
+    .print-footer p {
+        margin: 0;
+        font-size: 0.85rem;
+        text-align: center;
+        color: #666;
+    }
+    
+    /* ==========================================
+       SUIVI DE COMMANDE (ORGANISATION)
+       ========================================== */
+    
+    .status-section {
+        margin-bottom: 1rem;
+    }
+    
+    .status-section h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.95rem;
+        color: #0A76B7;
+    }
+    
+    .status-boxes {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+        margin-top: -35px;
+        float: right;
+    }
+    
+    .status-box {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid #333;
+        border-radius: 3px;
+        font-size: 0.85rem;
+    }
+    
+    .payment-section {
+        background: #f0f8ff;
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        clear: both;
+    }
+    
+    .payment-line {
+        margin-bottom: 0.3rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .payment-line:last-child {
+        margin-bottom: 0;
+    }
+    
+    .checkbox {
+        margin-right: 1rem;
+    }
+    
+    /* ==========================================
+       SIGNATURE
+       ========================================== */
+    
+    .signature-area {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+    
+    .signature-box {
+        text-align: center;
+    }
+    
+    .signature-line {
+        width: 6cm;
+        height: 1px;
+        border-bottom: 1px solid #333;
+        margin-bottom: 0.25rem;
+    }
+    
+    .signature-label {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    /* ==========================================
+       UTILITAIRES ET HELPERS
+       ========================================== */
+    
+    /* Classes pour masquer temporairement */
+    .hidden-for-split {
+        display: none !important;
+    }
+    
+    /* Empêcher les sauts de page dans certains éléments */
+    .no-page-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    /* Forcer un saut de page avant un élément */
+    .page-break-before {
+        page-break-before: always;
+    }
+    
+    /* ==========================================
+       CORRECTIONS ANTI-PAGES VIDES (CONSERVATRICES)
+       ========================================== */
+    
+    /* Masquer UNIQUEMENT les pages complètement vides */
+    .print-single-page:empty {
+        display: none !important;
+    }
+    
+    /* Page break plus conservateur */
+    .print-single-page {
+        page-break-after: auto;
+    }
+    
+    /* Forcer saut seulement entre pages non-vides consécutives */
+    .print-single-page:not(:last-child) {
+        page-break-after: always;
+    }
+    
+    /* ==========================================
+       RESPONSIVITÉ ET OPTIMISATIONS
+       ========================================== */
+    
+    /* Si pas assez de place, réduire les marges */
+    @media print and (max-height: 800px) {
+        .copy-main-header {
+            margin-bottom: 0.4rem;
+        }
+        
+        .copy-header {
+            margin-bottom: 0.6rem;
+        }
+        
+        .order-details,
+        .customer-details,
+        .items-details {
+            margin-bottom: 0.6rem;
+        }
+        
+        .items-table th,
+        .items-table td {
+            padding: 0.2rem 0.15rem;
+            font-size: 0.75rem;
+        }
+    }
+    
+    /* Optimisation pour beaucoup de photos */
+    .items-table tbody tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    /* Garder l'en-tête avec au moins 2 lignes */
+    .items-table thead {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+}
+
+/* ==========================================
+   STYLES D'ÉCRAN (DEBUG)
+   ========================================== */
+
+@media screen {
+    .print-only {
+        display: block;
+        border: 2px dashed #ccc;
+        margin: 1rem;
+        padding: 1rem;
+        background: #f9f9f9;
+    }
+    
+    .print-single-page {
+        border: 1px solid #999;
+        margin-bottom: 1rem;
+        min-height: 200px;
+    }
+    
+    /* Marquer les pages vides en rouge pour debug */
+    .print-single-page:empty {
+        background: rgba(255, 0, 0, 0.1);
+        border-color: red;
+    }
+    
+    .print-single-page:empty::before {
+        content: "PAGE VIDE - SERA SUPPRIMÉE À L'IMPRESSION";
+        color: red;
+        font-weight: bold;
+        display: block;
+        text-align: center;
+        padding: 2rem;
+    }
+}

@@ -1,0 +1,443 @@
+/* Styles pour l'impression */
+.print-only {
+    display: none;
+}
+
+@media print {
+    /* Cache la page entière sauf le contenu d'impression */
+    body > *:not(#print-content) {
+        display: none !important;
+    }
+    
+    /* Assure que le contenu d'impression est visible */
+    #print-content {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+    
+    /* Reset du body pour l'impression */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
+
+@media print {
+
+
+    
+    /* Masquer tout sauf le contenu d'impression */
+    body * {
+        visibility:hidden;
+    }
+    
+    #print-content,
+    #print-content * {
+        visibility: visible;
+    }
+    
+    #print-content {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* Format A4 paysage */
+    @page {
+        size: A4 landscape;
+        margin: 1cm;
+    }
+    
+    .print-page {
+        width: 100%;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 12px;
+        font-weight: 300;
+        color: #000;
+    }
+    
+    /* Page unique avec saut de page forcé */
+    .print-single-page {
+        width: 100%;
+        height: calc(100vh - 2cm);
+        position: relative;
+    }
+
+    .print-single-page {
+        page-break-after: auto;
+        min-height: calc(100vh - 2cm);
+    }
+
+    /* Forcer le saut uniquement entre les vraies pages */
+    .print-single-page:not(:last-child) {
+        page-break-after: always;
+    }
+    
+    .copy-main-header {
+        text-align: center;
+        margin-bottom: 0.6rem;
+        border-bottom: 3px solid #0BABDF;
+        padding-bottom: 0.3rem;
+    }
+    
+    .copy-main-header h1 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 400;
+        color: #0A76B7;
+    }
+    
+    .copy-print-date {
+        font-size: 0.85rem;
+        font-weight: 300;
+        color: #666;
+        margin-top: 0.15rem;
+    }
+    
+    /* Ajuster les autres éléments pour la police plus claire */
+    .copy-header h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: #0A76B7;
+    }
+    
+    .print-date {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+    
+    /* Deux exemplaires côte à côte avec ligne de découpe */
+    .print-duplicates {
+        display: flex;
+        gap: 1.5cm;
+        height: auto;
+        position: relative;
+    }
+    
+    /* Ligne pointillée de découpe verticale */
+    .print-duplicates::before {
+        /*content: "";*/
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        border-left: 2px dashed #999;
+        transform: translateX(-50%);
+        z-index: 10;
+    }
+    
+    .print-copy {
+        flex: 1;
+        border: 2px solid #333;
+        border-radius: 8px;
+        padding: 1rem;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        box-sizing: border-box;
+    }
+    
+    /* Styles pour une copie pleine page */
+    .print-copy-fullpage {
+        width: 100%;
+        border: 2px solid #333;
+        border-radius: 8px;
+        padding: 1rem;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 4cm);
+        box-sizing: border-box;
+        margin-bottom: 2cm;
+    }
+    
+    .copy-header {
+        text-align: center;
+        margin-bottom: 0.8rem;
+        border-bottom: 2px solid #0BABDF;
+        padding-bottom: 0.4rem;
+    }
+    
+    .copy-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #0A76B7;
+    }
+    
+    .copy-type {
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: #666;
+        margin-top: 0.2rem;
+        padding: 0.2rem 0.4rem;
+        background: #f0f8ff;
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    .copy-type.organization {
+        background: #fff0f5;
+        color: #8b0000;
+    }
+    
+    /* Section info photos sur première page */
+    .photos-info {
+        margin-bottom: 1rem;
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px dashed #0BABDF;
+    }
+    
+    .photos-info h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #0A76B7;
+    }
+    
+    .photos-info .total-section {
+        background: #e8f5e8;
+        margin: 0;
+    }
+    
+    .photos-info small {
+        color: #666;
+        font-style: italic;
+    }
+    
+    .copy-header {
+        text-align: center;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #0BABDF;
+        padding-bottom: 0.5rem;
+    }
+    
+    .copy-header h2 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: #0A76B7;
+    }
+    
+    .copy-type {
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: #666;
+        margin-top: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: #f0f8ff;
+        border-radius: 4px;
+        display: inline-block;
+    }
+    
+    .copy-type.organization {
+        background: #fff0f5;
+        color: #8b0000;
+    }
+    
+    /* Sections de détails - plus compactes pour les pages photos */
+    .order-details,
+    .customer-details,
+    .items-details {
+        margin-bottom: 0.8rem;
+        display: flex;
+        flex-direction: column; /* Force l'affichage vertical */
+    }
+    
+    .order-details h3,
+    .customer-details h3,
+    .items-details h3 {
+        margin: 0 0 0.4rem 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #0A76B7;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 0.2rem;
+    }
+    
+    .detail-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 0.2rem;
+        padding: 0.15rem 0;
+        font-size: 0.8rem;
+        width: 100%;
+        min-height: 1.2em;
+    }
+    
+    .detail-row:nth-child(even) {
+        background: #f9f9f9;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+        border-radius: 3px;
+    }
+
+    /* S'assurer que le label reste à gauche */
+    .detail-row strong {
+        flex-shrink: 0;
+        text-align: left;
+    }
+    
+    /* S'assurer que la valeur reste à droite */
+    .detail-row span {
+        flex-shrink: 0;
+        text-align: right;
+        margin-left: auto;
+    }
+
+    .highlight {
+        font-weight: bold !important;
+        font-family: 'Courier New', monospace !important;
+        font-size: 1em !important;
+        color: #d30420 !important;
+        text-align: right !important;
+        margin-left: auto !important;
+    }
+    
+    /* Section des photos commandées - ajusté pour plus d'éléments */
+    .items-details {
+        flex-grow: 1;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .items-details.overflow {
+        margin-bottom: 0;
+    }
+    
+    /* Tableau des articles plus compact pour les pages photos */
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .items-table th,
+    .items-table td {
+        border: 1px solid #ddd;
+        padding: 0.25rem 0.2rem;
+        text-align: left;
+        font-size: 0.8rem;
+        height: auto; /* Hauteur automatique au lieu de min-height */
+        vertical-align: top; /* Alignement en haut de la cellule */
+    }
+    
+    .items-table th {
+        background: #0BABDF;
+        color: white;
+        font-weight: bold;
+        font-size: 0.75rem;
+        height: auto;
+    }
+    
+    .items-table tr:nth-child(even) {
+        background: #f9f9f9;
+    }
+    
+    .total-section {
+        text-align: right;
+        padding: 0.25rem;
+        background: #e8f5e8;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin-top: auto;
+        flex-shrink: 0;
+    }
+    
+    /* Pied de page */
+    .print-footer {
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid #ddd;
+    }
+    
+    .print-footer-user{
+        margin-bottom:90px;
+    }
+
+    .status-section {
+        margin-bottom: 1rem;
+    }
+    
+    .status-section h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.95rem;
+        color: #0A76B7;
+    }
+    
+    .status-boxes {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+        margin-top:-35px;
+        float:right;
+    }
+    
+    .status-box {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid #333;
+        border-radius: 3px;
+        font-size: 0.85rem;
+    }
+    
+    .payment-section {
+        background: #f0f8ff;
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    
+    .payment-line {
+        margin-bottom: 0.3rem;
+    }
+    
+    .payment-line:last-child {
+        margin-bottom: 0;
+    }
+    
+    .checkbox {
+        margin-right: 1rem;
+    }
+    
+    .signature-area {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+    
+    .signature-box {
+        text-align: center;
+    }
+    
+    .signature-line {
+        width: 6cm;
+        height: 1px;
+        border-bottom: 1px solid #333;
+        margin-bottom: 0.25rem;
+    }
+    
+    .signature-label {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    /* Classes pour masquer temporairement */
+    .hidden-for-split {
+        display: none !important;
+    }
+}
