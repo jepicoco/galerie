@@ -241,18 +241,22 @@ class OrdersList extends CsvHandler {
         
         $stats = [
             'total_orders' => count($orders),
+            'total' => count($orders), // Alias pour compatibilité
             'total_amount' => 0,
             'total_photos' => 0,
             'unpaid_orders' => 0,
             'paid_orders' => 0,
+            'paid_today' => 0,
             'validated_orders' => 0,
             'pending_orders' => 0,
             'exported_orders' => 0,
             'retrieved_orders' => 0
         ];
         
+        $today = date('Y-m-d');
+        
         foreach ($orders as $order) {
-            $stats['total_amount'] += $order['amount'] ?? 0;
+            $stats['total_amount'] += $order['total_price'] ?? 0;
             $stats['total_photos'] += $order['total_photos'] ?? 0;
             
             // Compteurs par statut de paiement
@@ -261,6 +265,12 @@ class OrdersList extends CsvHandler {
                     $stats['unpaid_orders']++;
                 } else {
                     $stats['paid_orders']++;
+                    
+                    // Compter les commandes payées aujourd'hui
+                    $paymentDate = $order['payment_date'] ?? $order['actual_payment_date'] ?? '';
+                    if ($paymentDate && substr($paymentDate, 0, 10) === $today) {
+                        $stats['paid_today']++;
+                    }
                 }
             }
             
