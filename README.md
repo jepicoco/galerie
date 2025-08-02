@@ -152,11 +152,8 @@ php test_fonctionnalites_admin.php   # Test interface admin
 
 Distribué sous licence GPL-3.0. Voir `LICENSE` pour plus d'informations.
 
-## 📞 Support
+## 📞 Support - Todo
 
-- 📧 Contact : [votre-email@example.com]
-- 🐛 Issues : [https://github.com/VOTRE_USERNAME/galerie/issues]
-- 📖 Wiki : [https://github.com/VOTRE_USERNAME/galerie/wiki]
 
 ## 🙏 Remerciements
 
