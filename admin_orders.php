@@ -15,12 +15,16 @@ if (!$is_admin) {
     exit;
 }
 
+// Inclure l'autoloader pour les classes
+require_once 'classes/autoload.php';
+
 // Inclure le handler pour les fonctions
 require_once 'admin_orders_handler.php';
 
-// Charger les données pour l'affichage
-$ordersData = loadOrdersData(ORDERSLIST_UNPAID);
-$stats = calculateOrdersStats($ordersData['orders']);
+// Charger les données pour l'affichage avec la nouvelle classe
+$ordersList = new OrdersList();
+$ordersData = $ordersList->loadOrdersData('unpaid'); // Filtrer les commandes non payées
+$stats = $ordersList->calculateStats($ordersData['orders']);
 
 ?>
 <!DOCTYPE html>

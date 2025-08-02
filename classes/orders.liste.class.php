@@ -128,15 +128,34 @@ class OrdersList extends CsvHandler {
      * @return array Filtres normalisés
      */
     private function normalizeFilters($filter) {
+        // Gestion des constantes legacy (si elles existent)
+        if (defined('ORDERSLIST_TEMP') && $filter === ORDERSLIST_TEMP) {
+            return ['unpaid', 'not_exported'];
+        }
+        if (defined('ORDERSLIST_UNPAID') && $filter === ORDERSLIST_UNPAID) {
+            return ['unpaid'];
+        }
+        if (defined('ORDERSLIST_TOPREPARE') && $filter === ORDERSLIST_TOPREPARE) {
+            return ['paid', 'not_retrieved'];
+        }
+        if (defined('ORDERSLIST_CLOSED') && $filter === ORDERSLIST_CLOSED) {
+            return ['retrieved', 'exported'];
+        }
+        
+        // Gestion des filtres par chaîne de caractères
         switch ($filter) {
-            case ORDERSLIST_TEMP:
-                return ['unpaid', 'not_exported'];
-            case ORDERSLIST_UNPAID:
+            case 'unpaid':
                 return ['unpaid'];
-            case ORDERSLIST_TOPREPARE:
+            case 'paid':
+                return ['paid'];
+            case 'temp':
+                return ['unpaid', 'not_exported'];
+            case 'toprepare':
                 return ['paid', 'not_retrieved'];
-            case ORDERSLIST_CLOSED:
+            case 'closed':
                 return ['retrieved', 'exported'];
+            case 'all':
+                return ['all'];
             default:
                 return is_array($filter) ? $filter : ['all'];
         }
