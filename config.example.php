@@ -133,6 +133,8 @@ define('LOG_ROTATION', true);
 // ==========================================
 
 // Paramètres SMTP (à configurer dans email_handler.php)
+define('MAIL_ENABLED', true);
+define('MAIL_FRONT', false); //true pour activer l'envoi d'email de confirmation à la validation de la commande par un utilisateur
 define('SMTP_ENABLED', false);
 define('SMTP_HOST', 'smtp.exemple.com');
 define('SMTP_PORT', 587);

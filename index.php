@@ -7,7 +7,6 @@ session_start();
 
 require_once 'functions.php';
 
-
 // Créer les dossiers de données s'ils n'existent pas
 if (!is_dir(DATA_DIR)) {
     mkdir(DATA_DIR, 0755, true);
@@ -248,15 +247,23 @@ $sortedActivities = array_merge($featuredActivities, $normalActivities);
                         <div class="step-text">Mise à jour du fichier Excel</div>
                         <div class="step-status">⏳</div>
                     </div>
+                    <?php if (MAIL_FRONT): ?>
                     <div class="progress-step" id="step-email">
                         <div class="step-icon">📧</div>
                         <div class="step-text">Envoi de l'email de confirmation</div>
                         <div class="step-status">⏳</div>
                     </div>
+                    <?php endif; ?>
                 </div>
+                <?php if (MAIL_FRONT): ?>
                 <div class="progress-note">
                     <p>⏱️ Cette opération peut prendre quelques secondes en raison de l'envoi d'email...</p>
                 </div>
+                <?php else: ?>
+                <div class="progress-note">
+                    <p>⏱️ Cette opération peut prendre quelques secondes...</p>
+                </div>
+                <?php endif; ?>
             </div>
             
             <div id="validation-success" class="validation-step">
@@ -269,9 +276,11 @@ $sortedActivities = array_merge($featuredActivities, $normalActivities);
                     <div class="success-item" id="success-update-info" style="display: none;">
                         <strong>Type :</strong> <span class="update-badge">🔄 Mise à jour (remplace la précédente)</span>
                     </div>
+                    <?php if (MAIL_FRONT): ?>
                     <div class="success-item">
                         <strong>Email :</strong> <span id="success-email-status"></span>
                     </div>
+                    <?php endif; ?>
                 </div>
                 <div class="modal-actions">
                     <button id="print-order" class="btn btn-secondary">🖨️ Imprimer</button>

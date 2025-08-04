@@ -4,6 +4,7 @@
     const photosDir = '<?php echo PHOTOS_DIR; ?>';
     const ACTIVITY_PRICING = <?php echo json_encode($ACTIVITY_PRICING ?? []); ?>;
     const DEFAULT_ACTIVITY_TYPE = '<?php echo DEFAULT_ACTIVITY_TYPE ?? 'PHOTO'; ?>';
+    const MAIL_FRONT = <?php echo MAIL_FRONT ? 'true' : 'false'; ?>;
 
     // Configuration watermark
     const watermarkConfig = {

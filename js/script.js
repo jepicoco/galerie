@@ -1066,7 +1066,6 @@ async function createNewOrder(e) {
         });
         
         const responseText = await response.text();
-        console.log('Réponse brute:', responseText);
         
         let result;
         try {
@@ -1419,9 +1418,11 @@ async function performValidation() {
         updateProgressStep('step-excel', 'completed');
         
         // Étape 3 : Email
-        updateProgressStep('step-email', 'processing');
-        await new Promise(resolve => setTimeout(resolve, 800)); // Délai pour l'email
-        updateProgressStep('step-email', 'completed');
+        if(MAIL_FRONT){
+            updateProgressStep('step-email', 'processing');
+            await new Promise(resolve => setTimeout(resolve, 800)); // Délai pour l'email
+            updateProgressStep('step-email', 'completed');
+        }
         
         // Succès
         showValidationSuccess(result);
@@ -1456,11 +1457,14 @@ function showValidationSuccess(result) {
     }
     
     // Statut email
-    const emailStatus = document.getElementById('success-email-status');
-    if (result.email_sent) {
-        emailStatus.innerHTML = '<span style="color: #28a745;">✅ Envoyé avec succès</span>';
-    } else {
-        emailStatus.innerHTML = '<span style="color: #ffc107;">⚠️ Échec d\'envoi (commande validée)</span>';
+    
+    if(MAIL_FRONT){
+        const emailStatus = document.getElementById('success-email-status');
+        if (result.email_sent) {
+            emailStatus.innerHTML = '<span style="color: #28a745;">✅ Envoyé avec succès</span>';
+        } else {
+            emailStatus.innerHTML = '<span style="color: #ffc107;">⚠️ Échec d\'envoi (commande validée)</span>';
+        }
     }
     
     showValidationStep('validation-success');
