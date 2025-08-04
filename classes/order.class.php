@@ -132,10 +132,10 @@ class Order extends CsvHandler {
         }
         
         $updates = [
-            10 => $paymentData['payment_mode'] ?? '',
-            11 => $paymentData['desired_deposit_date'] ?? '',
-            12 => $paymentData['payment_date'] ?? '',
-            13 => $paymentData['actual_deposit_date'] ?? '',
+            10 => $payMode ?? '',
+            11 => $payDesiredDate ?? '',
+            12 => $payDate ?? '',
+            13 => $actualDepositDate ?? '',
             15 => $ORDER_STATUT['COMMAND_STATUS'][1] // validated
         ];
         

@@ -23,7 +23,9 @@ require_once 'admin_orders_handler.php';
 
 // Charger les données pour l'affichage avec la nouvelle classe
 $ordersList = new OrdersList();
+
 $ordersData = $ordersList->loadOrdersData('unpaid'); // Filtrer les commandes non payées
+print_r($ordersList);
 $stats = $ordersList->calculateStats($ordersData['orders']);
 
 ?>
@@ -106,7 +108,11 @@ $stats = $ordersList->calculateStats($ordersData['orders']);
             <!-- Navigation avec compteur optimisée -->
             <div class="admin-nav">
                 <h1>Gestion des Commandes</h1>
-                <?php $paidOrdersCount = countPendingRetrievals(); ?>
+                <?php 
+                require_once 'classes/orders.list.class.php';
+                $ordersList = new OrdersList();
+                $paidOrdersCount = $ordersList->countPendingRetrievals(); 
+                ?>
                 <a href="admin_paid_orders.php" class="nav-link">
                     Retraits 
                     <?php if ($paidOrdersCount > 0): ?>

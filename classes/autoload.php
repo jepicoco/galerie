@@ -37,7 +37,7 @@ function gallaAutoloader($className) {
         // Format avec underscores : MyClass -> my_class.class.php
         strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $className)) . '.class.php',
         
-        // Format pour classes avec points : Order.Liste -> orders.liste.class.php
+        // Format pour classes avec points : Order.List -> orders.list.class.php
         str_replace('.', '.', strtolower($className)) . '.class.php'
     ];
     
@@ -101,7 +101,7 @@ function gallaSpecialAutoloader($className) {
     
     // Mapping spécial pour les classes avec noms particuliers
     $specialMappings = [
-        'OrdersList' => 'orders.liste.class.php',
+        'OrdersList' => 'orders.list.class.php',
         'CsvHandler' => 'csv.class.php',
         'Logger' => 'logger.class.php',
         'Order' => 'order.class.php',
@@ -109,10 +109,10 @@ function gallaSpecialAutoloader($className) {
         // Aliases pour compatibilité
         'CSV' => 'csv.class.php',
         'Log' => 'logger.class.php',
-        'Orders' => 'orders.liste.class.php',
+        'Orders' => 'orders.list.class.php',
         'Command' => 'order.class.php',
         'Commande' => 'order.class.php',
-        'Liste' => 'orders.liste.class.php'
+        'Liste' => 'orders.list.class.php'
     ];
     
     // Vérifier les mappings spéciaux

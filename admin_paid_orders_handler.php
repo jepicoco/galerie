@@ -43,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 exit;
             }
             
-            $result = markOrderAsRetrieved($_POST['reference']);
+            $order = new Order($_POST['reference']);
+            $result = $order->updateRetrievalStatus('retrieved', date('Y-m-d H:i:s'));
             echo json_encode($result);
             exit;
     }

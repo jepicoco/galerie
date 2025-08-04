@@ -258,59 +258,6 @@ foreach ($activities as $activityKey => $activity) {
     $enrichedActivities[$activityKey] = $enrichedActivity;
 }
 
-/**
- * Compte le nombre de commandes réglées en attente de retrait
- * @return int Nombre de commandes
- * @version 1.0
- */
-function countPendingRetrievals() {
-    $csvFile = 'data/commandes.csv';
-    $count = 0;
-    
-    if (!file_exists($csvFile)) {
-        return 0;
-    }
-    
-    $handle = fopen($csvFile, 'r');
-    $headers = fgetcsv($handle, 0, ';');
-    
-    while (($data = fgetcsv($handle, 0, ';')) !== FALSE) {
-        $row = array_combine($headers, $data);
-        if ($row['Statut paiement'] === 'Réglé' && $row['Statut retrait'] !== 'Récupéré') {
-            $count++;
-        }
-    }
-    
-    fclose($handle);
-    return $count;
-}
-
-/**
- * Compte le nombre de commandes en attente de paiement
- * @return int Nombre de commandes
- * @version 1.0
- */
-function countPendingPayments() {
-    $csvFile = 'data/commandes.csv';
-    $count = 0;
-    
-    if (!file_exists($csvFile)) {
-        return 0;
-    }
-    
-    $handle = fopen($csvFile, 'r');
-    $headers = fgetcsv($handle, 0, ';');
-    
-    while (($data = fgetcsv($handle, 0, ';')) !== FALSE) {
-        $row = array_combine($headers, $data);
-        if ($row['Statut paiement'] !== 'Réglé') {
-            $count++;
-        }
-    }
-    
-    fclose($handle);
-    return $count;
-}
 
 /**
  * Nettoie les commandes temporaires anciennes

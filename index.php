@@ -269,6 +269,7 @@ $sortedActivities = array_merge($featuredActivities, $normalActivities);
             <div id="validation-success" class="validation-step">
                 <div class="validation-icon">✅</div>
                 <h3>Commande validée avec succès !</h3>
+                <p><strong>⚠️Rendez-vous à l'accueil pour le règlement.⚠️</strong></p>
                 <div class="success-details">
                     <div class="success-item">
                         <strong>Référence :</strong> <span id="success-reference"></span>

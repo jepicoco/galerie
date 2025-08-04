@@ -360,11 +360,11 @@ function initializeImageViewer() {
                         currentModalPhoto.photoPath
                     );
                     
-                    // Restaurer le bouton après 2 secondes
+                    // Restaurer le bouton après
                     setTimeout(() => {
                         this.classList.remove('success');
                         this.textContent = originalText;
-                    }, 2000);
+                    }, 500);
                     
                 } catch (error) {
                     console.error('Erreur ajout au panier depuis modal:', error);

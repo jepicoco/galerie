@@ -46,7 +46,11 @@ $paidStats = $ordersList->calculateStats($paidOrdersData['orders']);
     <main class="main-content">
         <div class="container">
             <div class="admin-nav">
-                <?php $pendingPaymentsCount = countPendingPayments(); ?>
+                <?php 
+                require_once 'classes/orders.list.class.php';
+                $ordersList = new OrdersList();
+                $pendingPaymentsCount = $ordersList->countPendingPayments(); 
+                ?>
                 <a href="admin_orders.php" class="nav-link">
                     ← Commandes 
                     <?php if ($pendingPaymentsCount > 0): ?>

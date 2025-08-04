@@ -47,15 +47,31 @@ class OrdersList extends CsvHandler {
         $this->orders = [];
         $this->rawData = [];
         $filters = $this->normalizeFilters($filter);
+
+        print('DEBUG 1');
+        print('<br />');
+        print($this->csvFile);
+        print('<br />');
+        print($csvData);
+        print('<br />');
+
         
         foreach ($csvData['data'] as $row) {
             if (count($row['data']) < 18) continue;
             
             $data = $row['data'];
             $ref = $data[0];
-            $paymentMode = $data[10];
-            $commandStatus = $data[15];
-            $exported = $data[16] ?? '';
+            $paymentMode = $data[10] ?? '';      // Mode de paiement - index 10
+            $commandStatus = $data[15] ?? '';    // Statut commande - index 15
+            $exported = $data[16] ?? '';         // Exported - index 16
+
+            print('DEBUG 2');
+            print_r($data); // Debug: afficher les données de la ligne
+            print('<br />');
+            // Normaliser les données
+            $data = array_map('trim', $data);
+            print_r($data); // Debug: afficher les données normalisées
+
             
             // Appliquer les filtres
             if (!$this->matchesFilters($data, $filters)) {
@@ -109,6 +125,7 @@ class OrdersList extends CsvHandler {
             
             $this->orders[$ref]['total_photos'] += $quantity;
             $this->orders[$ref]['amount'] += $subtotal;
+            $this->orders[$ref]['total_price'] += $subtotal;
         }
         
         // Trier par date de création (plus récent en premier)
@@ -168,42 +185,61 @@ class OrdersList extends CsvHandler {
      * @return bool True si la ligne correspond
      */
     private function matchesFilters($data, $filters) {
-        $paymentMode = $data[10];
-        $commandStatus = $data[15];
-        $exported = $data[16] ?? '';
+        // CSV structure: REF;Nom;Prenom;Email;Telephone;Date commande;Dossier;N de la photo;Quantite;Montant Total;Mode de paiement;Date encaissement souhaitee;Date encaissement;Date depot;Date de recuperation;Statut commande;Exported
+        $paymentMode = $data[10] ?? '';      // Mode de paiement - index 10
+        $retrievalDate = $data[14] ?? '';    // Date de recuperation - index 14
+        $commandStatus = $data[15] ?? '';    // Statut commande - index 15
+        $exported = $data[16] ?? '';         // Exported - index 16
         
+        // Si aucun filtre, accepter tout
+        if (empty($filters) || in_array('all', $filters)) {
+            return true;
+        }
+        
+        // Pour les filtres combinés, tous doivent être satisfaits (AND logic)
         foreach ($filters as $filter) {
+            $matches = false;
+            
             switch ($filter) {
                 case 'unpaid':
-                    if ($paymentMode === 'unpaid') return true;
+                    $matches = (empty($paymentMode) || $paymentMode === 'unpaid');
                     break;
                 case 'paid':
-                    if ($paymentMode === 'paid') return true;
+                    $matches = (!empty($paymentMode) && $paymentMode !== 'unpaid');
                     break;
                 case 'validated':
-                    if ($commandStatus === 'validated') return true;
+                    $matches = ($commandStatus === 'validated');
                     break;
                 case 'pending':
-                    if ($commandStatus === 'pending') return true;
+                    $matches = ($commandStatus === 'pending');
                     break;
                 case 'exported':
-                    if ($exported === 'exported') return true;
+                    $matches = ($exported === 'exported');
                     break;
                 case 'not_exported':
-                    if ($exported === '' || $exported !== 'exported') return true;
+                    $matches = (empty($exported) || $exported !== 'exported');
                     break;
                 case 'not_retrieved':
-                    if ($commandStatus === 'not_retrieved') return true;
+                    $matches = (empty($retrievalDate));
                     break;
                 case 'retrieved':
-                    if ($commandStatus === 'retrieved') return true;
+                    $matches = (!empty($retrievalDate));
                     break;
                 case 'all':
-                    return true;
+                    $matches = true;
+                    break;
+                default:
+                    $matches = true;
+                    break;
+            }
+            
+            // Si un filtre ne correspond pas, rejeter la ligne
+            if (!$matches) {
+                return false;
             }
         }
         
-        return false;
+        return true;
     }
     
     /**
@@ -539,6 +575,25 @@ class OrdersList extends CsvHandler {
      */
     public function getRawData() {
         return $this->rawData;
+    }
+    
+    /**
+     * Compte le nombre de commandes réglées en attente de retrait
+     * @return int Nombre de commandes
+     */
+    public function countPendingRetrievals() {
+        // Une commande est en attente de retrait si elle est payée mais pas encore récupérée
+        $data = $this->loadOrdersData(['paid', 'not_retrieved']);
+        return count($data['orders']);
+    }
+    
+    /**
+     * Compte le nombre de commandes en attente de paiement
+     * @return int Nombre de commandes
+     */
+    public function countPendingPayments() {
+        $data = $this->loadOrdersData('unpaid');
+        return count($data['orders']);
     }
 }
 

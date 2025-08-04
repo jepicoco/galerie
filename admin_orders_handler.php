@@ -19,18 +19,6 @@ try {
     exit;
 }
 
-// Initialiser le logger si non défini
-if (!isset($logger)) {
-    // Exemple d'initialisation simple, à adapter selon votre application
-    class SimpleLogger {
-        public function adminAction($action, $data = []) {
-            // Vous pouvez écrire dans un fichier ou simplement ignorer pour éviter l'erreur
-            // file_put_contents('admin_actions.log', date('Y-m-d H:i:s') . " $action: " . json_encode($data) . "\n", FILE_APPEND);
-        }
-    }
-    $logger = new SimpleLogger();
-}
-
 // Gestion des requêtes AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
@@ -108,22 +96,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
  * Obtenir les informations de contact d'une commande
  */
 function getOrderContact($reference) {
-    $ordersData = loadOrdersData();
-    
-    foreach ($ordersData['orders'] as $order) {
-        if ($order['reference'] === $reference) {
-            return [
-                'success' => true,
-                'contact' => [
-                    'email' => $order['email'],
-                    'phone' => $order['phone'],
-                    'name' => $order['firstname'] . ' ' . $order['lastname']
-                ]
-            ];
-        }
+    $order = new Order($reference);
+    if (!$order->load()) {
+        return ['success' => false, 'error' => 'Commande introuvable'];
     }
     
-    return ['success' => false, 'error' => 'Commande introuvable'];
+    $orderData = $order->getData();
+    return [
+        'success' => true,
+        'contact' => [
+            'email' => $orderData['email'],
+            'phone' => $orderData['phone'],
+            'name' => $orderData['firstname'] . ' ' . $orderData['lastname']
+        ]
+    ];
 }
 
 /**
@@ -143,38 +129,34 @@ function processOrderPayment($paymentData) {
     }
     
     try {
-        // 1. Charger les données de la commande
-        $ordersData = loadOrdersData();
-        $orderToProcess = null;
-        
-        foreach ($ordersData['orders'] as $order) {
-            if ($order['reference'] === $reference) {
-                $orderToProcess = $order;
-                break;
-            }
-        }
-        
-        if (!$orderToProcess) {
+        // 1. Charger la commande avec la classe Order
+        $order = new Order($reference);
+        if (!$order->load()) {
             return ['success' => false, 'error' => 'Commande introuvable'];
         }
         
+        $orderData = $order->getData();
+        
         // 2. Exporter vers commandes_reglees.csv
-        $exportResult = exportToReglees($orderToProcess, $paymentMode, $paymentDate, $desiredDepositDate, $actualDepositDate);
+        $exportResult = $order->exportToReglees($paymentMode, $paymentDate, $desiredDepositDate, $actualDepositDate);
         if (!$exportResult['success']) {
             return $exportResult;
         }
         
         // 3. Exporter vers commandes_a_preparer.csv
-        $prepareResult = exportToPreparer($orderToProcess);
+        $prepareResult = $order->exportToPreparer();
         if (!$prepareResult['success']) {
             return $prepareResult;
         }
 
         // 4. Met à jour le statut de la commande dans le fichier principal
-        $updateOrder = payOrder($reference,$paymentData);
+        $updateResult = $order->updatePaymentStatus($paymentData);
+        if (!$updateResult['success']) {
+            return $updateResult;
+        }
         
         // 5. Marquer comme exporté dans le fichier principal
-        $markResult = markOrderAsExported($reference);
+        $markResult = $order->markAsExported();
         if (!$markResult['success']) {
             return $markResult;
         }
@@ -182,7 +164,7 @@ function processOrderPayment($paymentData) {
         $logger->adminAction('Commande réglée', [
             'reference' => $reference,
             'payment_mode' => $paymentMode,
-            'amount' => $orderToProcess['amount']
+            'amount' => $orderData['total_price']
         ]);
         
         return ['success' => true, 'message' => 'Règlement traité avec succès'];
@@ -353,7 +335,8 @@ function markOrderAsExported($reference) {
  */
 // Fonction déplacée vers orders_helpers.php : updateOrderPaymentStatus()
 function payOrder($reference, $paymentData) {
-    return updateOrderPaymentStatus($reference, $paymentData);
+    $order = new Order($reference);
+    return $order->updatePaymentStatus($paymentData);
 }
 
 /**
@@ -1257,10 +1240,11 @@ function createDownloadArchive($files) {
 function resendOrderConfirmationEmail($reference) {
     try {
         // Charger les données de la commande
-        $orderData = getOrderDataByReference($reference);
-        if (!$orderData) {
+        $order = new Order($reference);
+        if (!$order->load()) {
             return ['success' => false, 'message' => 'Commande non trouvée'];
         }
+        $orderData = $order->getData();
         
         // Utiliser la fonction d'envoi d'email existante
         require_once 'email_handler.php';

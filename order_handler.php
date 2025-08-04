@@ -250,13 +250,17 @@ try {
         
         $logger->info("Fichier CSV mis à jour avec succès pour: $reference");
         
-        // Étape 4 : Envoyer l'email de confirmation
-        $emailHandler = new EmailHandler();
-        $emailSent = $emailHandler->sendOrderConfirmation($order, $isUpdate);
-        
-        if (!$emailSent) {
-            $logger->warning("Échec envoi email pour la commande: $reference");
-            // Ne pas faire échouer la validation pour un problème d'email
+        if(MAIL_FRONT) {
+            // Étape 4 : Envoyer l'email de confirmation
+            $emailHandler = new EmailHandler();
+            $emailSent = $emailHandler->sendOrderConfirmation($order, $isUpdate);
+            
+            if (!$emailSent) {
+                $logger->warning("Échec envoi email pour la commande: $reference");
+                // Ne pas faire échouer la validation pour un problème d'email
+            }
+        } else {
+            $emailSent = false; // Pas d'email envoyé si MAIL_FRONT est désactivé
         }
         
         // Étape 5 : Supprimer la commande temporaire
@@ -558,10 +562,10 @@ function addOrderToCSV($order, $ordersDir) {
         $excelFile = $ordersDir . 'commandes.csv';
         $isNewFile = !file_exists($excelFile);
         
-        // En-tête CSV complet avec BOM UTF-8 et la nouvelle colonne "exported"
+        // En-tête CSV complet avec BOM UTF-8
         if ($isNewFile) {
             $bom = "\xEF\xBB\xBF";
-            $header = $bom . "REF;Nom;Prenom;Email;Telephone;Date commande;Dossier;N de la photo;Quantite;Montant Total;Mode de paiement;Date encaissement souhaitee;Date encaissement;Date depot;Date de recuperation;Statut commande;Exported\n";
+            $header = "REF;Nom;Prenom;Email;Telephone;Date commande;Dossier;N de la photo;Quantite;Montant Total;Mode de paiement;Date encaissement souhaitee;Date encaissement;Date depot;Date de recuperation;Statut commande;Exported\n";
             if (file_put_contents($excelFile, $header) === false) {
                 error_log("Impossible de créer le fichier CSV: $excelFile");
                 return false;
@@ -597,7 +601,7 @@ function addOrderToCSV($order, $ordersDir) {
                 cleanCSVValue($order['retrieval_date'] ?? ''), //Date de recuperation                       - 15
                 cleanCSVValue($order['status'] ?? $ORDER_STATUT['COMMAND_STATUS'][0]),  //Statut commande   - 16
                 cleanCSVValue($order['exported'] ?? $ORDER_STATUT['EXPORT_STATUS'][0]), //Exported        - 17
-                cleanCSVValue('')
+                //cleanCSVValue('')
 
 
                 

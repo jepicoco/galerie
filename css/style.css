@@ -126,6 +126,38 @@ nav {
     transform: translateY(-2px);
 }
 
+/* Badges pour les compteurs */
+.badge {
+    display: inline-block;
+    background-color: var(--accent-color);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 0.25rem 0.5rem;
+    border-radius: 50px;
+    margin-left: 0.5rem;
+    min-width: 1.2rem;
+    text-align: center;
+    line-height: 1;
+    animation: pulse 2s infinite;
+}
+
+/* Animation subtile pour attirer l'attention */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Badges dans le contexte des boutons du header */
+header .btn .badge {
+    position: relative;
+    top: -1px;
+    background-color: #FFD700; /* Or pour plus de visibilité sur fond bleu */
+    color: #333;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
 /* Main content */
 main {
     padding: 2rem 0;
