@@ -117,7 +117,8 @@ class EmailHandler {
      */
     private function buildHtmlBody($order, $isUpdate) {
         $customerName = $order['customer']['firstname'] . ' ' . $order['customer']['lastname'];
-        $totalPhotos = array_sum(array_column($order['items'], 'quantity'));
+        $totalsByType = $this->calculateTotalsByActivityType($order['items']);
+        $totalPhotos = array_sum(array_column($totalsByType, 'quantity'));
         $updateText = $isUpdate ? '<p style="color: #d30420; font-weight: bold;">⚠️ Cette commande annule et remplace une commande précédente.</p>' : '';
         
         $html = '
@@ -165,7 +166,7 @@ class EmailHandler {
                 <h3>📋 Informations de la commande</h3>
                 <p><strong>Référence :</strong> ' . $order['reference'] . '</p>
                 <p><strong>Date :</strong> ' . date('d/m/Y à H:i', strtotime($order['created_at'])) . '</p>
-                <p><strong>Total photos :</strong> ' . $totalPhotos . '</p>
+                <p><strong>Total :</strong> ' . $this->formatTotalsByType($totalsByType) . '</p>
             </div>
             
             <div class="customer-info">
@@ -198,7 +199,7 @@ class EmailHandler {
         $html .= '
                     <tr class="total-row">
                         <td colspan="2"><strong>TOTAL</strong></td>
-                        <td><strong>' . $totalPhotos . ' photo(s)</strong></td>
+                        <td><strong>' . $this->formatTotalsByType($totalsByType) . '</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -214,7 +215,7 @@ class EmailHandler {
         </div>
         
         <div class="footer">
-            <p>Cette commande a été générée automatiquement le ' . date('d/m/Y à H:i') . '</p>
+            <p>Cet email a été générée le ' . date('d/m/Y à H:i') . '</p>
             <p>Pour toute question, conservez précieusement cette référence : <strong>' . $order['reference'] . '</strong></p>
         </div>
     </div>
@@ -229,7 +230,8 @@ class EmailHandler {
      */
     private function buildTextBody($order, $isUpdate) {
         $customerName = $order['customer']['firstname'] . ' ' . $order['customer']['lastname'];
-        $totalPhotos = array_sum(array_column($order['items'], 'quantity'));
+        $totalsByType = $this->calculateTotalsByActivityType($order['items']);
+        $totalPhotos = array_sum(array_column($totalsByType, 'quantity'));
         $updateText = $isUpdate ? "\n⚠️ ATTENTION: Cette commande annule et remplace une commande précédente.\n" : '';
         
         $text = "CONFIRMATION DE COMMANDE - " . $order['reference'] . "\n";
@@ -242,7 +244,7 @@ class EmailHandler {
         $text .= "----------------------------\n";
         $text .= "Référence : " . $order['reference'] . "\n";
         $text .= "Date : " . date('d/m/Y à H:i', strtotime($order['created_at'])) . "\n";
-        $text .= "Total photos : " . $totalPhotos . "\n\n";
+        $text .= "Total : " . $this->formatTotalsByType($totalsByType, false) . "\n\n";
         
         $text .= "VOS INFORMATIONS\n";
         $text .= "----------------\n";
@@ -255,7 +257,7 @@ class EmailHandler {
         foreach ($order['items'] as $item) {
             $text .= "- " . $item['activity_key'] . " / " . $item['photo_name'] . " (x" . $item['quantity'] . ")\n";
         }
-        $text .= "\nTOTAL : " . $totalPhotos . " photo(s)\n\n";
+        $text .= "\n" . $this->formatTotalsByType($totalsByType, false) . "\n\n";
         
         $text .= "PROCHAINES ÉTAPES\n";
         $text .= "-----------------\n";
@@ -668,6 +670,105 @@ class EmailHandler {
         $textBody = "Test Email\n\nSi vous recevez cet email, la configuration fonctionne correctement.\n\nDate: " . date('Y-m-d H:i:s');
         
         return $this->sendEmail($recipient, $subject, $htmlBody, $textBody);
+    }
+    
+    /**
+     * Calculer les totaux par type d'activité basé sur $ACTIVITY_PRICING
+     */
+    private function calculateTotalsByActivityType($items) {
+        global $ACTIVITY_PRICING;
+        
+        $totalsByType = [];
+        
+        // Initialiser les types disponibles
+        if (isset($ACTIVITY_PRICING) && is_array($ACTIVITY_PRICING)) {
+            foreach ($ACTIVITY_PRICING as $type => $config) {
+                $totalsByType[$type] = [
+                    'quantity' => 0,
+                    'display_name' => $config['display_name'] ?? $type,
+                    'type' => $type
+                ];
+            }
+        }
+        
+        // Compter les items par type d'activité
+        foreach ($items as $item) {
+            $activityKey = $item['activity_key'] ?? '';
+            
+            // Chercher le type de pricing pour cette activité
+            $pricingType = $this->getActivityPricingType($activityKey);
+            
+            if (isset($totalsByType[$pricingType])) {
+                $totalsByType[$pricingType]['quantity'] += intval($item['quantity'] ?? 1);
+            } else {
+                // Type inconnu, ajouter comme "PHOTO" par défaut
+                if (!isset($totalsByType['PHOTO'])) {
+                    $totalsByType['PHOTO'] = [
+                        'quantity' => 0,
+                        'display_name' => 'Photo',
+                        'type' => 'PHOTO'
+                    ];
+                }
+                $totalsByType['PHOTO']['quantity'] += intval($item['quantity'] ?? 1);
+            }
+        }
+        
+        // Retourner seulement les types avec des quantités > 0
+        return array_filter($totalsByType, function($type) {
+            return $type['quantity'] > 0;
+        });
+    }
+    
+    /**
+     * Obtenir le type de pricing pour une activité donnée
+     */
+    private function getActivityPricingType($activityKey) {
+
+        $princingType = getActivityTypeInfo($activityKey); // Par défaut
+        return $princingType['pricing_type'] ?? 'PHOTO'; // Fallback à 'PHOTO' si non défini
+        /*
+        // Chercher l'activité dans les données
+        if (function_exists('getActivityTypeInfo')) {
+            $typeInfo = getActivityTypeInfo($activityKey);
+            if (isset($typeInfo['pricing_type'])) {
+                return $typeInfo['pricing_type'];
+            }
+        }
+        
+        // Fallback : déterminer le type par le nom de l'activité
+        $activityKey = strtoupper($activityKey);
+        
+        if (strpos($activityKey, 'USB') !== false || strpos($activityKey, 'CLE') !== false) {
+            return 'USB';
+        }
+        
+        // Par défaut : PHOTO
+        return 'PHOTO';
+        */
+    }
+    
+    /**
+     * Formater les totaux par type pour affichage
+     */
+    private function formatTotalsByType($totalsByType, $htmlFormat = true) {
+        if (empty($totalsByType)) {
+            return $htmlFormat ? '0 photo' : '0 photo';
+        }
+        
+        $parts = [];
+        foreach ($totalsByType as $type) {
+            if ($type['quantity'] > 0) {
+                $label = $type['display_name'];
+                $quantity = $type['quantity'];
+                $parts[] = "$quantity $label" . ($quantity > 1 ? 's' : '');
+            }
+        }
+        
+        if (empty($parts)) {
+            return $htmlFormat ? '0 photo' : '0 photo';
+        }
+        
+        return implode($htmlFormat ? ', ' : ', ', $parts);
     }
 }
 ?>

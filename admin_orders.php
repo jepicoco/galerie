@@ -331,22 +331,25 @@ $stats = $ordersList->calculateStats($ordersData['orders']);
     <div id="emailConfirmationModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Renvoyer l'email de confirmation</h3>
+                <h3>Envoyer l'email de confirmation</h3>
                 <span class="close" onclick="closeModal('emailConfirmationModal')">&times;</span>
             </div>
             <div class="modal-body">
-                <div class="confirmation-message">
-                    <p><strong>Êtes-vous sûr de vouloir renvoyer l'email de confirmation pour la commande <span id="email-order-reference"></span> ?</strong></p>
-                    <p>L'email sera envoyé à : <span id="email-customer-email"></span></p>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('emailConfirmationModal')">
-                        Annuler
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="sendOrderConfirmationEmail()">
-                        Confirmer l'envoi
-                    </button>
-                </div>
+                <form id="paymentForm">
+                    <input type="hidden" id="order-reference" name="reference">
+                    <div class="confirmation-message">
+                        <p><strong>Êtes-vous sûr de vouloir envoyer l'email de confirmation pour la commande <span id="email-order-reference"></span> ?</strong></p>
+                        <p>L'email sera envoyé à : <span id="email-customer-email"></span></p>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('emailConfirmationModal')">
+                            Annuler
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="sendOrderConfirmationEmail()">
+                            Confirmer l'envoi
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

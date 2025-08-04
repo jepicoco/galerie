@@ -2484,18 +2484,20 @@ function showNotification(message, type = 'info') {
 function updateCartButtonVisibility() {
     // Contrôle de l'existence de l'élément order-reference
     const orderReference = document.getElementById('order-reference');
+    const clearCartBtn = document.getElementById('clear-cart');
+    const cartCountElem = document.getElementById('cart-count');
 
-    if (orderReference) {
-        const cartRef = document.getElementById('cart-count').textContent;
-        const clearCartBtn = document.getElementById('clear-cart');
-        
-        if (clearCartBtn) {
-            if (cartRef) {
-                clearCartBtn.style.display = 'block';
-            } else {
-                clearCartBtn.style.display = 'none';
-            }
-        }
+    if (!orderReference || !clearCartBtn || !cartCountElem) {
+        // Si un des éléments n'existe pas, ne rien faire
+        return;
+    }
+
+    const cartRef = cartCountElem.textContent;
+
+    if (cartRef && parseInt(cartRef) > 0) {
+        clearCartBtn.style.display = 'block';
+    } else {
+        clearCartBtn.style.display = 'none';
     }
 }
 

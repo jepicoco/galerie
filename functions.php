@@ -207,6 +207,7 @@ function getActivityTypeInfo($activityKey) {
     }
 
     $pricingType = $activitiesData[$activityKey]['pricing_type'] ?? DEFAULT_ACTIVITY_TYPE;
+    $ACTIVITY_PRICING[$pricingType]['pricing_type'] = $pricingType;
     
     return $ACTIVITY_PRICING[$pricingType] ?? $ACTIVITY_PRICING[DEFAULT_ACTIVITY_TYPE];
 }

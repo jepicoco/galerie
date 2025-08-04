@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     
     $action = $_POST['action'];
-    $response = ['success' => false, 'error' => 'Action non reconnue'];
+    $response = ['success' => false, 'error' => 'Action non reconnue : ' . $action];
     
     switch ($action) {
         case 'get_contact':
@@ -90,15 +90,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         case 'check_coherence':
             $response = checkActivityCoherence();
             break;
-        // Ajouter ce case dans le switch existant
         case 'resend_confirmation_email':
             if (!isset($_POST['reference'])) {
                 echo json_encode(['success' => false, 'message' => 'Référence manquante']);
                 exit;
             }
             
-            $result = resendOrderConfirmationEmail($_POST['reference']);
-            echo json_encode($result);
+            $response = resendOrderConfirmationEmail($_POST['reference']);
             break;
     }
     
@@ -1265,19 +1263,26 @@ function resendOrderConfirmationEmail($reference) {
         }
         
         // Utiliser la fonction d'envoi d'email existante
-        require_once 'mail_functions.php';
-        $emailSent = resendOrderConfirmationEmail($orderData);
+        require_once 'email_handler.php';
+        $emailHandler = new EmailHandler();
+        $emailSent = $emailHandler->sendOrderConfirmation($orderData, false);
         
         if ($emailSent) {
             // Logger l'action
-            $logger->info("Email de confirmation renvoyé pour la commande " . $reference);
+            if (isset($logger)) {
+                $logger->info("Email de confirmation renvoyé pour la commande " . $reference);
+            }
             return ['success' => true, 'message' => 'Email envoyé avec succès'];
         } else {
             return ['success' => false, 'message' => 'Erreur lors de l\'envoi de l\'email'];
         }
         
     } catch (Exception $e) {
-        logError("Erreur lors du renvoi d'email pour " . $reference . ": " . $e->getMessage());
+        if (function_exists('logError')) {
+            logError("Erreur lors du renvoi d'email pour " . $reference . ": " . $e->getMessage());
+        } else {
+            error_log("Erreur lors du renvoi d'email pour " . $reference . ": " . $e->getMessage());
+        }
         return ['success' => false, 'message' => 'Erreur technique'];
     }
 }
@@ -1289,31 +1294,39 @@ function resendOrderConfirmationEmail($reference) {
  * @version 1.0
  */
 function getOrderDataByReference($reference) {
-    $csvFile = 'data/commandes.csv';
-    if (!file_exists($csvFile)) {
-        return null;
-    }
+    // Utiliser la classe OrdersList pour charger les données
+    $ordersList = new OrdersList();
+    $ordersData = $ordersList->loadOrdersData();
     
-    $handle = fopen($csvFile, 'r');
-    $headers = fgetcsv($handle, 0, ';');
-    
-    while (($data = fgetcsv($handle, 0, ';')) !== FALSE) {
-        $row = array_combine($headers, $data);
-        if ($row['REF'] === $reference) {
-            fclose($handle);
-            return [
-                'reference' => $row['REF'],
-                'firstname' => $row['Prenom'],
-                'lastname' => $row['Nom'],
-                'email' => $row['Email'],
-                'phone' => $row['Telephone'],
-                'amount' => floatval($row['Montant']),
-                'retrieval_date' => $row['Date de recuperation']
+    // Chercher la commande par référence
+    foreach ($ordersData['orders'] as $order) {
+        if ($order['reference'] === $reference) {
+            // Adapter la structure pour EmailHandler
+            $order['customer'] = [
+                'firstname' => $order['firstname'],
+                'lastname' => $order['lastname'],
+                'email' => $order['email'],
+                'phone' => $order['phone'] ?? ''
             ];
+            
+            // Transformer les photos en items pour EmailHandler
+            $order['items'] = [];
+            if (isset($order['photos']) && is_array($order['photos'])) {
+                foreach ($order['photos'] as $photo) {
+                    $order['items'][] = [
+                        'activity_key' => $photo['activity_key'] ?? '',
+                        'photo_name' => $photo['name'] ?? 'Photo',
+                        'quantity' => intval($photo['quantity'] ?? 1),
+                        'unit_price' => floatval($photo['price'] ?? 0),
+                        'total_price' => floatval($photo['price'] ?? 0) * intval($photo['quantity'] ?? 1)
+                    ];
+                }
+            }
+            
+            return $order;
         }
     }
     
-    fclose($handle);
     return null;
 }
 

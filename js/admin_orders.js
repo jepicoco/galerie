@@ -1044,6 +1044,7 @@ async function downloadAllFiles(filesJson) {
  */
 function showEmailConfirmationModal(reference) {
     const order = ordersData.find(o => o.reference === reference);
+
     if (!order) {
         alert('Commande non trouvée');
         return;
@@ -1055,7 +1056,7 @@ function showEmailConfirmationModal(reference) {
     // Stocker la référence pour l'envoi
     document.getElementById('emailConfirmationModal').dataset.reference = reference;
     
-    openModal('emailConfirmationModal');
+    showModal('emailConfirmationModal');
 }
 
 /**
@@ -1065,7 +1066,7 @@ function showEmailConfirmationModal(reference) {
 function sendOrderConfirmationEmail() {
     const modal = document.getElementById('emailConfirmationModal');
     const reference = modal.dataset.reference;
-    
+
     if (!reference) {
         alert('Référence de commande manquante');
         return;
