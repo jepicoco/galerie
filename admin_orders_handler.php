@@ -10,8 +10,7 @@ require_once 'config.php';
 
 try {
     require_once 'functions.php';
-    require_once 'orders_helpers.php';
-    require_once 'email_handler.php';
+    
 } catch (Exception $e) {
     // Nettoyer la sortie et retourner une erreur JSON
     ob_clean();

@@ -16,7 +16,6 @@ session_start();
 try {
     require_once 'functions.php';
     require_once 'classes/autoload.php';
-    require_once 'email_handler.php';
 } catch (Exception $e) {
     // Nettoyer la sortie et retourner une erreur JSON
     ob_clean();
@@ -474,7 +473,7 @@ try {
             break;
         }
         
-        $debug = debugOrderFiles($reference, $ordersDir);
+        //$debug = debugOrderFiles($reference, $ordersDir);
         echo json_encode(['success' => true, 'debug' => $debug]);
         break;
     
