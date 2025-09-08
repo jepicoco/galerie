@@ -69,8 +69,8 @@ try {
             break;
         }
         
-        // Générer référence unique
-        $reference = 'CMD' . date('YmdHi') . rand(10, 99);
+        // Générer référence unique et robuste
+        $reference = generateUniqueOrderReference();
         
         $order = [
             'reference' => $reference,

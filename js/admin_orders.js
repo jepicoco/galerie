@@ -176,7 +176,9 @@ async function exportPreparationList() {
         const result = await response.json();
         
         if (result.success) {
-            showNotification('Liste de préparation générée', 'success');
+            const message = result.message || 'Liste de préparation générée';
+            const details = result.orders_count ? ` (${result.orders_count} commandes, ${result.photos_count} photos)` : '';
+            showNotification(message + details, 'success');
             downloadFile(result.file);
         } else {
             showNotification('Erreur: ' + result.error, 'error');

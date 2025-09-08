@@ -80,15 +80,62 @@ class CsvHandler {
     }
     
     /**
-     * Écrit des données dans un fichier CSV
+     * Sanitise une valeur pour éviter les injections de formules Excel/CSV
+     * @param string $value Valeur à sanitiser
+     * @return string Valeur sanitisée
+     */
+    public function sanitizeCSVValue($value) {
+        if (!is_string($value)) {
+            return $value;
+        }
+        
+        // Caractères dangereux pour injection de formules Excel
+        $dangerousChars = ['=', '+', '-', '@', '\t', '\r', '\n'];
+        
+        // Vérifier si la valeur commence par un caractère dangereux
+        $firstChar = substr($value, 0, 1);
+        if (in_array($firstChar, $dangerousChars)) {
+            // Préfixer avec une apostrophe pour forcer le traitement comme texte
+            $value = "'" . $value;
+        }
+        
+        // Nettoyer les caractères de contrôle problématiques pour CSV
+        $value = str_replace(["\t", "\r\n", "\r", "\n"], [' ', ' ', ' ', ' '], $value);
+        
+        // Supprimer les caractères de contrôle invisibles
+        $value = preg_replace('/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/', '', $value);
+        
+        return $value;
+    }
+    
+    /**
+     * Sanitise un tableau de données pour CSV
+     * @param array $data Données à sanitiser
+     * @return array Données sanitisées
+     */
+    public function sanitizeCSVData($data) {
+        $sanitizedData = [];
+        foreach ($data as $row) {
+            $sanitizedRow = [];
+            foreach ($row as $value) {
+                $sanitizedRow[] = $this->sanitizeCSVValue($value);
+            }
+            $sanitizedData[] = $sanitizedRow;
+        }
+        return $sanitizedData;
+    }
+    
+    /**
+     * Écrit des données dans un fichier CSV avec sanitisation automatique
      * @param string $filePath Chemin vers le fichier CSV
      * @param array $data Données à écrire
      * @param array $header En-tête du fichier (optionnel)
      * @param bool $append Mode d'ajout (par défaut false = écrasement)
      * @param bool $addBom Ajouter le BOM UTF-8 (par défaut false)
+     * @param bool $sanitize Activer la sanitisation anti-injection (par défaut true)
      * @return bool Succès de l'opération
      */
-    public function write($filePath, $data, $header = null, $append = false, $addBom = false) {
+    public function write($filePath, $data, $header = null, $append = false, $addBom = false, $sanitize = true) {
         $mode = $append ? 'a' : 'w';
         $handle = fopen($filePath, $mode);
         
@@ -101,13 +148,15 @@ class CsvHandler {
             fwrite($handle, "\xEF\xBB\xBF");
         }
         
-        // Écrire l'en-tête si fourni et en mode écriture
+        // Sanitiser l'en-tête si fourni et en mode écriture
         if ($header !== null && !$append) {
-            fputcsv($handle, $header, $this->delimiter, $this->enclosure, $this->escape);
+            $sanitizedHeader = $sanitize ? $this->sanitizeCSVData([$header])[0] : $header;
+            fputcsv($handle, $sanitizedHeader, $this->delimiter, $this->enclosure, $this->escape);
         }
         
-        // Écrire les données
-        foreach ($data as $row) {
+        // Sanitiser et écrire les données
+        $processedData = $sanitize ? $this->sanitizeCSVData($data) : $data;
+        foreach ($processedData as $row) {
             fputcsv($handle, $row, $this->delimiter, $this->enclosure, $this->escape);
         }
         

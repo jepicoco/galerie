@@ -31,7 +31,11 @@ if (isset($_GET['logout'])) {
 }
 
 if($is_admin){
-    cleanOldTempOrders(COMMANDES_DIR);
+    // Nettoyage intelligent : seulement toutes les 15 minutes pour éviter la surcharge
+    adminCleanupTempOrders(COMMANDES_DIR);
+} else {
+    // Nettoyage rare pour les utilisateurs publics : toutes les 2 heures
+    smartCleanupTempOrders(COMMANDES_DIR);
 }
 
 // Si aucun fichier d'activités n'existe, le créer à partir des dossiers

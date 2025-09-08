@@ -149,13 +149,19 @@ class OrdersList extends CsvHandler {
         // Gestion des filtres par chaîne de caractères - Statuts unifiés v2.0
         switch ($filter) {
             case 'unpaid':
-                return ['temp', 'validated']; // Commandes non payées (temp et validated)
+                return ['unpaid']; // Utilise le filtre unpaid direct
             case 'paid':
                 return ['paid'];
             case 'temp':
                 return ['temp']; // Commandes temporaires uniquement
             case 'validated':
                 return ['validated']; // Commandes validées non payées
+            case 'prepared':
+                return ['prepared']; // Commandes préparées
+            case 'retrieved': 
+                return ['retrieved']; // Commandes récupérées
+            case 'cancelled':
+                return ['cancelled']; // Commandes annulées
             case 'toprepare':
                 return ['paid', 'prepared']; // À préparer : payées et préparées
             case 'closed':
@@ -210,9 +216,9 @@ class OrdersList extends CsvHandler {
                     $matches = ($commandStatus === 'cancelled');
                     break;
                 
-                // Filtres legacy (à migrer progressivement)
+                // Filtre unpaid selon système unifié v2.0
                 case 'unpaid':
-                    $matches = (in_array($commandStatus, ['temp', 'validated']) || empty($paymentMode) || $paymentMode === 'unpaid');
+                    $matches = (in_array($commandStatus, ['temp', 'validated']));
                     break;
                     
                 // Filtres d'export et récupération
@@ -441,40 +447,20 @@ class OrdersList extends CsvHandler {
     }
     
     /**
-     * Nettoie les commandes temporaires anciennes
+     * Nettoie les commandes temporaires anciennes (version classe avec retour détaillé)
      * @param string $ordersDir Répertoire des commandes
-     * @param int $maxAgeHours Age maximum en heures (défaut: 20)
-     * @return array Résultat de l'opération
+     * @param int $maxAgeHours Âge maximum en heures (défaut: 20)
+     * @param bool $force Forcer le nettoyage même si récent
+     * @return array Résultat détaillé de l'opération
      */
-    public function cleanOldTempOrders($ordersDir, $maxAgeHours = 20) {
-        $tempDir = $ordersDir . 'temp/';
-        
-        if (!is_dir($tempDir)) {
-            return ['success' => true, 'deleted_count' => 0, 'message' => 'Aucun dossier temporaire trouvé'];
-        }
-        
-        $tempFiles = glob($tempDir . '*.json');
-        $deletedCount = 0;
-        $maxAge = $maxAgeHours * 3600; // Conversion en secondes
-        $errors = [];
-        
-        foreach ($tempFiles as $file) {
-            $fileAge = time() - filemtime($file);
-            
-            if ($fileAge > $maxAge) {
-                if (unlink($file)) {
-                    $deletedCount++;
-                    error_log("Commande temporaire supprimée (age: " . round($fileAge/3600, 1) . "h): " . basename($file));
-                } else {
-                    $errors[] = "Impossible de supprimer: " . basename($file);
-                }
-            }
-        }
+    public function cleanOldTempOrders($ordersDir, $maxAgeHours = 20, $force = false) {
+        // Utiliser la fonction globale optimisée avec conversion du résultat
+        $deletedCount = cleanOldTempOrders($ordersDir, 0, $force); // 0 = pas de limite d'intervalle pour cette méthode
         
         return [
-            'success' => empty($errors),
+            'success' => true,
             'deleted_count' => $deletedCount,
-            'errors' => $errors,
+            'errors' => [],
             'message' => "$deletedCount fichier(s) temporaire(s) supprimé(s)"
         ];
     }

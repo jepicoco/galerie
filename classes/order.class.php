@@ -30,12 +30,11 @@ class Order extends CsvHandler {
     }
     
     /**
-     * Génère une nouvelle référence de commande
+     * Génère une nouvelle référence de commande unique et robuste
      * @return string Nouvelle référence
      */
     public function generateReference() {
-        $timestamp = date('Ymd') . date('His');
-        $this->reference = 'CMD' . $timestamp;
+        $this->reference = generateUniqueOrderReference();
         return $this->reference;
     }
     

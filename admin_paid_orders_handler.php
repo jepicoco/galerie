@@ -153,7 +153,9 @@ function markOrderAsRetrieved($reference) {
         $tempHandle = fopen($tempFile, 'w');
         
         $headers = fgetcsv($handle, 0, ';');
-        fputcsv($tempHandle, $headers, ';');
+        // Sanitiser l'en-tête aussi au cas où
+        $sanitizedHeaders = array_map('sanitizeCSVValue', $headers);
+        fputcsv($tempHandle, $sanitizedHeaders, ';');
         
         $found = false;
         
@@ -170,7 +172,9 @@ function markOrderAsRetrieved($reference) {
                 $data[16] = 'exported';          // Exported à l'index 16
             }
             
-            fputcsv($tempHandle, $data, ';');
+            // Sanitiser les données avant export CSV pour éviter les injections de formules
+            $sanitizedData = array_map('sanitizeCSVValue', $data);
+            fputcsv($tempHandle, $sanitizedData, ';');
         }
         
         fclose($handle);

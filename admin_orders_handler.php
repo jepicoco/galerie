@@ -318,7 +318,9 @@ function markOrderAsExported($reference) {
             $data[17] = 'exported';
         }
         
-        $updatedLines[] = implode(';', $data);
+        // Sanitiser les données avant export CSV pour éviter les injections de formules
+        $sanitizedData = array_map('sanitizeCSVValue', $data);
+        $updatedLines[] = implode(';', $sanitizedData);
     }
     
     if (!$orderFound) {
@@ -347,35 +349,103 @@ function payOrder($reference, $paymentData) {
 }
 
 /**
- * Exporter la liste de préparation
+ * Exporter la liste de préparation - Version corrigée
+ * Génère un export complet pour l'imprimeur avec toutes les commandes paid/validated non récupérées
  */
 function exportPreparationList() {
-    $preparerFile = 'commandes/commandes_a_preparer.csv';
+    // Utiliser OrdersList pour récupérer les commandes à imprimer
+    require_once 'classes/autoload.php';
+    $ordersList = new OrdersList();
     
-    if (!file_exists($preparerFile)) {
-        return ['success' => false, 'error' => 'Aucune commande à préparer'];
+    // Récupérer les commandes paid et validated (non retrieved)
+    $paidOrders = $ordersList->loadOrdersData('paid');
+    $validatedOrders = $ordersList->loadOrdersData('validated');
+    
+    $allOrders = array_merge($paidOrders['orders'], $validatedOrders['orders']);
+    
+    // Filtrer les commandes déjà récupérées
+    $ordersToProcess = array_filter($allOrders, function($order) {
+        return $order['command_status'] !== 'retrieved' && empty($order['retrieval_date']);
+    });
+    
+    if (empty($ordersToProcess)) {
+        return ['success' => false, 'error' => 'Aucune commande à préparer (toutes sont déjà récupérées ou non validées)'];
     }
     
-    // Générer un fichier de téléchargement avec timestamp
+    // Générer le fichier CSV
     $timestamp = date('Y-m-d_H-i-s');
-    $downloadFile = 'exports/preparation_' . $timestamp . '.csv';
+    $downloadFile = 'exports/preparation_complete_' . $timestamp . '.csv';
     
     // Créer le dossier exports s'il n'existe pas
     if (!is_dir('exports')) {
         mkdir('exports', 0755, true);
     }
     
-    $result = copy($preparerFile, $downloadFile);
+    // Générer le contenu CSV
+    $csvContent = generatePreparationListContent($ordersToProcess);
     
-    if ($result) {
+    $result = file_put_contents($downloadFile, $csvContent);
+    
+    if ($result !== false) {
         return [
             'success' => true,
             'file' => $downloadFile,
-            'message' => 'Liste de préparation générée'
+            'message' => 'Liste de préparation complète générée',
+            'orders_count' => count($ordersToProcess),
+            'photos_count' => array_sum(array_column($ordersToProcess, 'total_photos'))
         ];
     } else {
         return ['success' => false, 'error' => 'Impossible de générer le fichier'];
     }
+}
+
+/**
+ * Génère le contenu CSV pour la liste de préparation
+ * @param array $orders Liste des commandes à traiter
+ * @return string Contenu CSV
+ */
+function generatePreparationListContent($orders) {
+    // BOM UTF-8 pour Excel
+    $bom = "\xEF\xBB\xBF";
+    
+    // En-tête CSV
+    $header = "Ref;Statut;Nom;Prenom;Email;Tel;Activite;Photo;Quantite;Prix_unitaire;Sous_total;Date_commande;Mode_paiement;Notes\n";
+    
+    $content = $bom . $header;
+    $totalPhotos = 0;
+    $totalAmount = 0;
+    
+    foreach ($orders as $order) {
+        foreach ($order['photos'] as $photo) {
+            $line = [
+                $order['reference'],
+                $order['command_status'],
+                sanitizeCSVValue($order['lastname']),
+                sanitizeCSVValue($order['firstname']),
+                sanitizeCSVValue($order['email']),
+                sanitizeCSVValue($order['phone']),
+                sanitizeCSVValue($photo['activity_key']),
+                sanitizeCSVValue($photo['name']),
+                $photo['quantity'],
+                number_format($photo['unit_price'], 2, ',', ''),
+                number_format($photo['subtotal'], 2, ',', ''),
+                $order['created_at'],
+                formatOrderStatus($order['payment_mode'] ?? ''),
+                '' // Notes vides pour l'imprimeur
+            ];
+            
+            $content .= implode(';', $line) . "\n";
+            $totalPhotos += $photo['quantity'];
+            $totalAmount += $photo['subtotal'];
+        }
+    }
+    
+    // Ajouter une ligne de résumé
+    $content .= "\n";
+    $content .= "RESUME;;;;;;;;" . $totalPhotos . ";;;" . number_format($totalAmount, 2, ',', '') . ";;;\n";
+    $content .= "COMMANDES_TOTAL;;;;;;;;" . count($orders) . ";;;;;;;;\n";
+    
+    return $content;
 }
 
 /**
@@ -732,16 +802,22 @@ function generatePickingListsByActivityCSV() {
             foreach ($commandes as $commande) {
                 $contact = !empty($commande['telephone']) ? $commande['telephone'] : $commande['email'];
                 
-                $csvContent .= implode(';', [
-                    '"' . $activite . '"',
-                    '"' . $photoNom . '"',
-                    '"' . $commande['ref'] . '"',
-                    '"' . $commande['nom'] . '"',
-                    '"' . $commande['prenom'] . '"',
+                // Préparer les données et les sanitiser contre les injections de formules
+                $rowData = [
+                    $activite,
+                    $photoNom,
+                    $commande['ref'],
+                    $commande['nom'],
+                    $commande['prenom'],
                     $commande['quantite'],
-                    '"' . $contact . '"',
+                    $contact,
                     '' // Colonne "Fait" vide pour cocher manuellement
-                ]) . "\n";
+                ];
+                
+                $sanitizedRowData = array_map('sanitizeCSVValue', $rowData);
+                $csvContent .= implode(';', array_map(function($value) {
+                    return '"' . str_replace('"', '""', $value) . '"';
+                }, $sanitizedRowData)) . "\n";
             }
         }
     }
