@@ -7,11 +7,23 @@ let isFilterExpanded = false;
 function initializeTagsFilter() {
     // Collecter tous les tags des activités
     document.querySelectorAll('.activity-card').forEach(card => {
-        // Récupération des tags depuis l'attribut data-tags (séparés par espaces)
+        // Récupération des tags depuis l'attribut data-tags (format JSON)
         const tagsString = card.dataset.tags;
         if (tagsString && tagsString.trim()) {
-            const tags = tagsString.split(' ').map(tag => tag.trim()).filter(tag => tag);
-            tags.forEach(tag => allTags.add(tag));
+            try {
+                const tags = JSON.parse(tagsString);
+                if (Array.isArray(tags)) {
+                    tags.forEach(tag => {
+                        if (tag && tag.trim()) {
+                            allTags.add(tag.trim());
+                        }
+                    });
+                }
+            } catch (e) {
+                // Fallback : si ce n'est pas du JSON, traiter comme avant
+                const tags = tagsString.split(' ').map(tag => tag.trim()).filter(tag => tag);
+                tags.forEach(tag => allTags.add(tag));
+            }
         }
     });
 
@@ -121,11 +133,44 @@ function updateActivitiesDisplay() {
     activityCards.forEach(card => {
         let show = true;
 
-        // Filtre par recherche textuelle
+        // Filtre par recherche textuelle étendue
         if (searchTerm) {
-            const activityName = card.querySelector('h3')?.textContent.toLowerCase() || '';
-            const description = card.querySelector('.description')?.textContent.toLowerCase() || '';
-            const searchableText = `${activityName} ${description}`;
+            // Récupération de toutes les données de recherche
+            const activityName = (card.dataset.activityName || card.querySelector('h3')?.textContent || '').toLowerCase();
+            const description = (card.dataset.description || card.querySelector('.description')?.textContent || '').toLowerCase();
+            
+            // Récupération des tags pour la recherche
+            let tagsText = '';
+            const cardTagsString = card.dataset.tags || '';
+            try {
+                const parsedTags = JSON.parse(cardTagsString);
+                if (Array.isArray(parsedTags)) {
+                    tagsText = parsedTags.join(' ').toLowerCase();
+                }
+            } catch (e) {
+                // Fallback
+                tagsText = cardTagsString.toLowerCase();
+            }
+            
+            // Récupération des noms de photos
+            let photosText = '';
+            const cardPhotosString = card.dataset.photos || '';
+            try {
+                const parsedPhotos = JSON.parse(cardPhotosString);
+                if (Array.isArray(parsedPhotos)) {
+                    // Extraire les noms de fichiers sans extension pour la recherche
+                    photosText = parsedPhotos.map(photo => {
+                        const nameWithoutExt = photo.replace(/\.[^/.]+$/, ''); // Enlever l'extension
+                        return nameWithoutExt.replace(/[-_]/g, ' '); // Remplacer tirets et underscores par espaces
+                    }).join(' ').toLowerCase();
+                }
+            } catch (e) {
+                // Pas de photos ou erreur de parsing
+                photosText = '';
+            }
+            
+            // Combiner tous les textes recherchables
+            const searchableText = `${activityName} ${description} ${tagsText} ${photosText}`;
             
             if (!searchableText.includes(searchTerm)) {
                 show = false;
@@ -135,7 +180,17 @@ function updateActivitiesDisplay() {
         // Filtre par tags sélectionnés
         if (show && selectedTags.size > 0) {
             const cardTagsString = card.dataset.tags || '';
-            const cardTags = cardTagsString.split(' ').map(tag => tag.trim()).filter(tag => tag);
+            let cardTags = [];
+            
+            try {
+                const parsedTags = JSON.parse(cardTagsString);
+                if (Array.isArray(parsedTags)) {
+                    cardTags = parsedTags.map(tag => tag.trim()).filter(tag => tag);
+                }
+            } catch (e) {
+                // Fallback : si ce n'est pas du JSON, traiter comme avant
+                cardTags = cardTagsString.split(' ').map(tag => tag.trim()).filter(tag => tag);
+            }
             
             // Logique AND: afficher si TOUS les tags sélectionnés sont présents
             const hasAllSelectedTags = Array.from(selectedTags).every(selectedTag => 

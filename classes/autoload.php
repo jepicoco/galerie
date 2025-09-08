@@ -112,7 +112,7 @@ function gallaSpecialAutoloader($className) {
         'Orders' => 'orders.list.class.php',
         'Command' => 'order.class.php',
         'Commande' => 'order.class.php',
-        'Liste' => 'orders.list.class.php'
+        'List' => 'orders.list.class.php'
     ];
     
     // Vérifier les mappings spéciaux
@@ -126,7 +126,7 @@ function gallaSpecialAutoloader($className) {
             $realClassName = $className;
             if (in_array($className, ['CSV'])) $realClassName = 'CsvHandler';
             if (in_array($className, ['Log'])) $realClassName = 'Logger';
-            if (in_array($className, ['Orders', 'Liste'])) $realClassName = 'OrdersList';
+            if (in_array($className, ['Orders', 'List'])) $realClassName = 'OrdersList';
             if (in_array($className, ['Command', 'Commande'])) $realClassName = 'Order';
             
             if (class_exists($realClassName, false)) {

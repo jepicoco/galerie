@@ -63,17 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Charger les données
 $activities = loadActivitiesData();
 
-function loadActivitiesData() {
-    $dataFile = DATA_DIR . 'activities.json';
-    
-    if (file_exists($dataFile)) {
-        $content = file_get_contents($dataFile);
-        return json_decode($content, true) ?: [];
-    }
-    
-    return [];
-}
-
 function updateActivityData($activityKey, $newData) {
     $activities = loadActivitiesData();
     

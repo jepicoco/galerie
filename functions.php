@@ -196,6 +196,16 @@ function getActivityPrice($activityKey) {
 }
 
 /**
+ * Traduit un statut ou mode de paiement en français
+ * @param string $status Le statut/mode à traduire
+ * @return string Le statut traduit ou le statut original si pas de traduction
+ */
+function translateOrderStatus($status) {
+    global $ORDER_STATUT_PRINT;
+    return $ORDER_STATUT_PRINT[$status] ?? $status;
+}
+
+/**
  * Récupérer les informations complètes du type de tarification
  */
 function getActivityTypeInfo($activityKey) {
@@ -287,5 +297,19 @@ function cleanOldTempOrders($ordersDir) {
     }
     
     return $deletedCount;
+}
+
+/**
+ * Charger les données des activités depuis le fichier JSON
+ */
+function loadActivitiesData() {
+    $dataFile = DATA_DIR . 'activities.json';
+    
+    if (file_exists($dataFile)) {
+        $content = file_get_contents($dataFile);
+        return json_decode($content, true) ?: [];
+    }
+    
+    return [];
 }
 ?>

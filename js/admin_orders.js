@@ -47,7 +47,7 @@ function setupPaymentFormLogic() {
     
     // Afficher/masquer les champs spécifiques aux chèques
     paymentModeSelect.addEventListener('change', function() {
-        if (this.value === 'Chèque') {
+        if (this.value === 'check') {
             checkFields.style.display = 'block';
         } else {
             checkFields.style.display = 'none';
@@ -101,20 +101,23 @@ function showPaymentModal(reference) {
     currentOrderReference = reference;
     
     // Trouver les détails de la commande
+    console.log(currentOrderReference);
     const order = ordersData.find(o => o.reference === reference);
+    console.log(!order);
     if (!order) {
         showNotification('Commande introuvable', 'error');
         return;
     }
     
     // Pré-remplir le formulaire
-    document.getElementById('payment-reference').value = reference;
+    document.getElementById('reference').value = reference;
     document.getElementById('payment-mode').value = '';
     document.getElementById('payment-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('desired-deposit-date').value = '';
     document.getElementById('actual-deposit-date').value = '';
     document.getElementById('check-fields').style.display = 'none';
     
+    console.log(order);
     showModal('paymentModal');
 }
 

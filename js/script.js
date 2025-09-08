@@ -888,7 +888,8 @@ function createWatermarkPattern(container, text) {
     container.appendChild(pattern);
 }
 
-document.addEventListener('contextmenu', event => event.preventDefault());
+// Empêcher le menu contextuel par défaut
+// Document.addEventListener('contextmenu', event => event.preventDefault());
 
 // Initialiser le système de commandes
 function initializeOrderSystem() {
@@ -2648,3 +2649,207 @@ function highlightCartItem(itemElement, wasExisting = false) {
         itemElement.classList.remove(highlightClass);
     }, 2000);
 }
+
+// === SYSTÈME DE MISE À JOUR TEMPS RÉEL DES BADGES ===
+
+/**
+ * Variables pour le système de mise à jour des badges
+ */
+let badgeUpdateInterval = null;
+let isUpdatingBadges = false;
+let lastBadgeUpdate = 0;
+
+/**
+ * Initialise le système de mise à jour automatique des badges
+ * Vérifie toutes les 10 secondes si de nouvelles commandes ont été créées
+ * @version 1.0.0
+ */
+function initializeBadgeUpdater() {
+    // Vérifier que nous sommes sur une page admin
+    if (!isAdminLoggedIn && !document.querySelector('.badge')) {
+        return; // Pas de badges à mettre à jour
+    }
+    
+    // Démarrer la vérification périodique
+    startBadgeUpdater();
+    
+    // Écouter les changements de visibilité de la page
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopBadgeUpdater();
+        } else {
+            startBadgeUpdater();
+        }
+    });
+    
+    // Arrêter les mises à jour avant de quitter la page
+    window.addEventListener('beforeunload', function() {
+        stopBadgeUpdater();
+    });
+
+    console.log('Badge updater initialized');
+}
+
+/**
+ * Démarre le timer de mise à jour des badges
+ */
+function startBadgeUpdater() {
+    if (badgeUpdateInterval) {
+        clearInterval(badgeUpdateInterval);
+    }
+    
+    // Première mise à jour immédiate
+    updateOrdersBadges();
+    
+    // Puis mise à jour toutes les 10 secondes
+    badgeUpdateInterval = setInterval(updateOrdersBadges, 2000);
+}
+
+/**
+ * Arrête le timer de mise à jour des badges
+ */
+function stopBadgeUpdater() {
+    if (badgeUpdateInterval) {
+        clearInterval(badgeUpdateInterval);
+        badgeUpdateInterval = null;
+    }
+}
+
+/**
+ * Met à jour les badges des commandes en récupérant les statistiques via API
+ * @version 1.0.0
+ */
+async function updateOrdersBadges() {
+    // Éviter les appels simultanés
+    if (isUpdatingBadges) {
+        return;
+    }
+    
+    // Limiter les appels : minimum 5 secondes entre les mises à jour
+    const now = Date.now();
+    if (now - lastBadgeUpdate < 5000) {
+        return;
+    }
+    
+    isUpdatingBadges = true;
+    lastBadgeUpdate = now;
+    
+    try {
+        const response = await fetch('api_orders_stats.php', {
+            method: 'GET',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.stats) {
+            updateBadgeElements(data.stats);
+            
+            // Log seulement si les valeurs ont changé
+            const currentRetrievals = parseInt(document.querySelector('a[href="admin_paid_orders.php"] .badge')?.textContent || '0');
+            const currentOrders = parseInt(document.querySelector('a[href="admin_orders.php"] .badge')?.textContent || '0');
+            
+            if (currentRetrievals !== data.stats.retrieval_count || currentOrders !== data.stats.orders_count) {
+                console.log('Badges updated:', {
+                    retrieval_count: data.stats.retrieval_count,
+                    orders_count: data.stats.orders_count,
+                    timestamp: new Date(data.timestamp * 1000).toLocaleTimeString()
+                });
+            }
+        } else {
+            console.warn('API response error:', data.error || 'Unknown error');
+        }
+        
+    } catch (error) {
+        console.error('Error updating badges:', error.message);
+        
+        // En cas d'erreur répétée, ralentir les mises à jour
+        if (error.message.includes('403') || error.message.includes('401')) {
+            console.warn('Authentication error, stopping badge updates');
+            stopBadgeUpdater();
+        }
+    } finally {
+        isUpdatingBadges = false;
+    }
+}
+
+/**
+ * Met à jour les éléments DOM des badges avec les nouvelles valeurs
+ * @param {Object} stats - Statistiques des commandes
+ * @param {number} stats.retrieval_count - Nombre de commandes en attente de retrait
+ * @param {number} stats.orders_count - Nombre de commandes en attente de paiement
+ */
+function updateBadgeElements(stats) {
+    // Mettre à jour le badge "Retraits"
+    const retrievalLinks = document.querySelectorAll('a[href="admin_paid_orders.php"]');
+    retrievalLinks.forEach(link => {
+        updateSingleBadge(link, stats.retrieval_count);
+    });
+    
+    // Mettre à jour le badge "Commandes"
+    const orderLinks = document.querySelectorAll('a[href="admin_orders.php"]');
+    orderLinks.forEach(link => {
+        updateSingleBadge(link, stats.orders_count);
+    });
+}
+
+/**
+ * Met à jour un badge spécifique
+ * @param {HTMLElement} linkElement - Élément de lien contenant le badge
+ * @param {number} count - Nouvelle valeur du compteur
+ */
+function updateSingleBadge(linkElement, count) {
+    if (!linkElement) return;
+    
+    let badge = linkElement.querySelector('.badge');
+    
+    if (count > 0) {
+        if (!badge) {
+            // Créer le badge s'il n'existe pas
+            badge = document.createElement('span');
+            badge.className = 'badge';
+            linkElement.appendChild(badge);
+        }
+        
+        // Mettre à jour le contenu avec animation si la valeur a changé
+        const currentValue = parseInt(badge.textContent || '0');
+        if (currentValue !== count) {
+            badge.textContent = count;
+            
+            // Animation de mise à jour
+            badge.style.transform = 'scale(1.2)';
+            badge.style.transition = 'transform 0.2s ease-in-out';
+            
+            setTimeout(() => {
+                badge.style.transform = 'scale(1)';
+            }, 200);
+        }
+    } else {
+        // Supprimer le badge si le compteur est à zéro
+        if (badge) {
+            badge.remove();
+        }
+    }
+}
+
+/**
+ * Fonction utilitaire pour forcer une mise à jour immédiate des badges
+ * Utile après des actions qui modifient les commandes
+ */
+function forceBadgeUpdate() {
+    lastBadgeUpdate = 0; // Reset du throttling
+    updateOrdersBadges();
+}
+
+// Initialiser le système de mise à jour des badges au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    // Attendre un peu que la page soit complètement chargée
+    setTimeout(initializeBadgeUpdater, 1000);
+});

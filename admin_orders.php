@@ -7,9 +7,6 @@ session_start();
 
 require_once 'functions.php';
 
-// Vérifier l'authentification admin
-$is_admin = is_admin();
-
 if (!$is_admin) {
     header('Location: index.php');
     exit;
@@ -25,7 +22,7 @@ require_once 'admin_orders_handler.php';
 $ordersList = new OrdersList();
 
 $ordersData = $ordersList->loadOrdersData('unpaid'); // Filtrer les commandes non payées
-print_r($ordersList);
+
 $stats = $ordersList->calculateStats($ordersData['orders']);
 
 ?>
@@ -109,15 +106,11 @@ $stats = $ordersList->calculateStats($ordersData['orders']);
             <div class="admin-nav">
                 <h1>Gestion des Commandes</h1>
                 <?php 
-                require_once 'classes/orders.list.class.php';
                 $ordersList = new OrdersList();
                 $paidOrdersCount = $ordersList->countPendingRetrievals(); 
                 ?>
                 <a href="admin_paid_orders.php" class="nav-link">
                     Retraits 
-                    <?php if ($paidOrdersCount > 0): ?>
-                        <span class="nav-counter"><?php echo $paidOrdersCount; ?></span>
-                    <?php endif; ?>
                     →
                 </a>
             </div>
@@ -287,16 +280,16 @@ $stats = $ordersList->calculateStats($ordersData['orders']);
             </div>
             <div class="modal-body">
                 <form id="paymentForm">
-                    <input type="hidden" id="payment-reference" name="reference">
+                    <input type="hidden" id="reference" name="reference">
                     
                     <div class="form-group">
                         <label for="payment-mode">Mode de règlement *</label>
                         <select id="payment-mode" name="payment_mode" required>
                             <option value="">Sélectionner...</option>
-                            <option value="Espèces">Espèces</option>
-                            <option value="Chèque">Chèque</option>
-                            <option value="CB">Carte bancaire</option>
-                            <option value="Virement">Virement</option>
+                            <option value="cash">Espèces</option>
+                            <option value="check">Chèque</option>
+                            <option value="card">Carte bancaire</option>
+                            <option value="transfert">Virement</option>
                         </select>
                     </div>
                     

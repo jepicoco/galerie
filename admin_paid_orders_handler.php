@@ -67,22 +67,32 @@ function loadPaidOrdersData() {
     $headers = fgetcsv($handle, 0, ';');
     
     while (($data = fgetcsv($handle, 0, ';')) !== FALSE) {
-        $row = array_combine($headers, $data);
+        // S'assurer qu'on a 17 colonnes (padding avec chaînes vides si nécessaire)
+        while (count($data) < 17) {
+            $data[] = '';
+        }
         
-        // Filtrer les commandes réglées mais non récupérées
-        if ($row['Statut paiement'] === 'paid' && $row['Statut retrait'] !== 'retrieved') {
+        // Structure CSV réelle: REF;Nom;Prenom;Email;Telephone;Date commande;Dossier;N de la photo;Quantite;Montant Total;Mode de paiement;Date encaissement souhaitee;Date encaissement;Date depot;Date de recuperation;Statut commande;Exported
+        // Indices:               0   1   2      3     4         5             6       7               8        9             10             11                          12                13        14                     15              16
+        
+        $commandStatus = $data[15] ?? '';    // Statut commande unifié
+        $retrievalDate = $data[14] ?? '';    // Date de recuperation
+        
+        // Filtrer les commandes payées mais non récupérées (statuts unifiés v2.0)
+        if ($commandStatus === 'paid' && empty($retrievalDate)) {
             $orders[] = [
-                'reference' => $row['REF'],
-                'firstname' => $row['Prenom'],
-                'lastname' => $row['Nom'],
-                'email' => $row['Email'],
-                'phone' => $row['Telephone'],
-                'payment_date' => $row['Paiement effectue le'],
-                'payment_mode' => $row['Mode de paiement'],
-                'retrieval_date' => $row['Date de recuperation'],
-                'amount' => floatval($row['Montant']),
-                'total_photos' => intval($row['Quantite']),
-                'created_at' => $row['Paiement effectue le'] // À ajuster selon la structure
+                'reference' => $data[0],      // REF
+                'firstname' => $data[2],      // Prenom
+                'lastname' => $data[1],       // Nom
+                'email' => $data[3],          // Email
+                'phone' => $data[4],          // Telephone
+                'payment_date' => $data[12],  // Date encaissement
+                'payment_mode' => $data[10],  // Mode de paiement
+                'retrieval_date' => $data[14], // Date de recuperation
+                'amount' => floatval($data[9] ?? 0), // Montant Total
+                'total_photos' => intval($data[8] ?? 0), // Quantite
+                'created_at' => $data[5] ?? '', // Date commande
+                'command_status' => $commandStatus
             ];
         }
     }
@@ -148,15 +158,19 @@ function markOrderAsRetrieved($reference) {
         $found = false;
         
         while (($data = fgetcsv($handle, 0, ';')) !== FALSE) {
-            $row = array_combine($headers, $data);
-            
-            if ($row['REF'] === $reference) {
-                $found = true;
-                $row['Statut retrait'] = 'retrieved';
-                $row['Exported'] = 'exported';
+            // S'assurer qu'on a 17 colonnes
+            while (count($data) < 17) {
+                $data[] = '';
             }
             
-            fputcsv($tempHandle, array_values($row), ';');
+            if ($data[0] === $reference) { // REF à l'index 0
+                $found = true;
+                $data[14] = date('Y-m-d H:i:s'); // Date de recuperation à l'index 14
+                $data[15] = 'retrieved';         // Statut commande unifié à l'index 15
+                $data[16] = 'exported';          // Exported à l'index 16
+            }
+            
+            fputcsv($tempHandle, $data, ';');
         }
         
         fclose($handle);

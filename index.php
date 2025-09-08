@@ -368,13 +368,16 @@ $sortedActivities = array_merge($featuredActivities, $normalActivities);
                 $activity_photos = $activity['photos'] ?? [];
                 $is_featured = isset($activity['featured']) && $activity['featured'];
                 
-                // Préparer les tags pour l'attribut data-tags
-                $tags_string = !empty($activity_tags) ? htmlspecialchars(implode(' ', $activity_tags)) : '';
+                // Préparer les tags pour l'attribut data-tags (utiliser JSON pour préserver les tags complets)
+                $tags_string = !empty($activity_tags) ? htmlspecialchars(json_encode($activity_tags)) : '[]';
                 ?>
                 
                 <div class="activity-card<?php echo $is_featured ? ' featured' : ''; ?>" 
                     data-activity="<?php echo htmlspecialchars($activity_key); ?>"
-                    data-tags="<?php echo $tags_string; ?>">
+                    data-tags="<?php echo $tags_string; ?>"
+                    data-activity-name="<?php echo $activity_name; ?>"
+                    data-description="<?php echo $activity_description; ?>"
+                    data-photos="<?php echo htmlspecialchars(json_encode($activity_photos)); ?>">
                     
                     <div class="activity-image">
                         <?php if (!empty($activity_photos)): ?>

@@ -8,10 +8,13 @@ session_start();
 require_once 'functions.php';
 
 // Vérifier si l'utilisateur est connecté en tant qu'admin
-if (!isset($_SESSION['admin']) || $_SESSION['admin'] !== true) {
+if (!$is_admin) {
     header('Location: index.php');
     exit;
 }
+
+header('Location: admin_galeries.php');
+    exit;
 
 // Message de succès après redirection
 if (isset($_GET['watermark_updated'])) {

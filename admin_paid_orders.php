@@ -52,10 +52,7 @@ $paidStats = $ordersList->calculateStats($paidOrdersData['orders']);
                 $pendingPaymentsCount = $ordersList->countPendingPayments(); 
                 ?>
                 <a href="admin_orders.php" class="nav-link">
-                    ← Commandes 
-                    <?php if ($pendingPaymentsCount > 0): ?>
-                        <span class="nav-counter"><?php echo $pendingPaymentsCount; ?></span>
-                    <?php endif; ?>
+                    ← Commandes
                 </a>
                 <h1>Retraits</h1>
             </div>

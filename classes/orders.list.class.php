@@ -39,7 +39,7 @@ class OrdersList extends CsvHandler {
             return ['orders' => [], 'raw_data' => []];
         }
         
-        $csvData = $this->read($this->csvFile, true, 18);
+        $csvData = $this->read($this->csvFile, true, 17);
         if ($csvData === false) {
             return ['orders' => [], 'raw_data' => []];
         }
@@ -48,31 +48,32 @@ class OrdersList extends CsvHandler {
         $this->rawData = [];
         $filters = $this->normalizeFilters($filter);
 
-        print('DEBUG 1');
-        print('<br />');
-        print($this->csvFile);
-        print('<br />');
-        print($csvData);
-        print('<br />');
+        // Debug
+        error_log("OrdersList: Filters appliqués: " . print_r($filters, true));
+        error_log("OrdersList: Nombre de lignes CSV: " . count($csvData['data']));
 
-        
         foreach ($csvData['data'] as $row) {
-            if (count($row['data']) < 18) continue;
             
             $data = $row['data'];
+            
+            // S'assurer que nous avons toutes les colonnes nécessaires (padding avec des chaînes vides)
+            while (count($data) < 17) {
+                $data[] = '';
+            }
+            
             $ref = $data[0];
             $paymentMode = $data[10] ?? '';      // Mode de paiement - index 10
             $commandStatus = $data[15] ?? '';    // Statut commande - index 15
             $exported = $data[16] ?? '';         // Exported - index 16
 
-            print('DEBUG 2');
-            print_r($data); // Debug: afficher les données de la ligne
-            print('<br />');
             // Normaliser les données
             $data = array_map('trim', $data);
-            print_r($data); // Debug: afficher les données normalisées
-
             
+            // Debug pour la première ligne
+            if ($ref === 'CMD20250804154460') {
+                error_log("OrdersList: Première ligne - " . print_r($data, true));
+            }
+
             // Appliquer les filtres
             if (!$this->matchesFilters($data, $filters)) {
                 continue;
@@ -145,32 +146,20 @@ class OrdersList extends CsvHandler {
      * @return array Filtres normalisés
      */
     private function normalizeFilters($filter) {
-        // Gestion des constantes legacy (si elles existent)
-        if (defined('ORDERSLIST_TEMP') && $filter === ORDERSLIST_TEMP) {
-            return ['unpaid', 'not_exported'];
-        }
-        if (defined('ORDERSLIST_UNPAID') && $filter === ORDERSLIST_UNPAID) {
-            return ['unpaid'];
-        }
-        if (defined('ORDERSLIST_TOPREPARE') && $filter === ORDERSLIST_TOPREPARE) {
-            return ['paid', 'not_retrieved'];
-        }
-        if (defined('ORDERSLIST_CLOSED') && $filter === ORDERSLIST_CLOSED) {
-            return ['retrieved', 'exported'];
-        }
-        
-        // Gestion des filtres par chaîne de caractères
+        // Gestion des filtres par chaîne de caractères - Statuts unifiés v2.0
         switch ($filter) {
             case 'unpaid':
-                return ['unpaid'];
+                return ['temp', 'validated']; // Commandes non payées (temp et validated)
             case 'paid':
                 return ['paid'];
             case 'temp':
-                return ['unpaid', 'not_exported'];
+                return ['temp']; // Commandes temporaires uniquement
+            case 'validated':
+                return ['validated']; // Commandes validées non payées
             case 'toprepare':
-                return ['paid', 'not_retrieved'];
+                return ['paid', 'prepared']; // À préparer : payées et préparées
             case 'closed':
-                return ['retrieved', 'exported'];
+                return ['retrieved']; // Fermées : retirées
             case 'all':
                 return ['all'];
             default:
@@ -201,18 +190,32 @@ class OrdersList extends CsvHandler {
             $matches = false;
             
             switch ($filter) {
-                case 'unpaid':
-                    $matches = (empty($paymentMode) || $paymentMode === 'unpaid');
-                    break;
-                case 'paid':
-                    $matches = (!empty($paymentMode) && $paymentMode !== 'unpaid');
+                // Filtrage par statut de commande unifié v2.0
+                case 'temp':
+                    $matches = ($commandStatus === 'temp');
                     break;
                 case 'validated':
                     $matches = ($commandStatus === 'validated');
                     break;
-                case 'pending':
-                    $matches = ($commandStatus === 'pending');
+                case 'paid':
+                    $matches = ($commandStatus === 'paid');
                     break;
+                case 'prepared':
+                    $matches = ($commandStatus === 'prepared');
+                    break;
+                case 'retrieved':
+                    $matches = ($commandStatus === 'retrieved');
+                    break;
+                case 'cancelled':
+                    $matches = ($commandStatus === 'cancelled');
+                    break;
+                
+                // Filtres legacy (à migrer progressivement)
+                case 'unpaid':
+                    $matches = (in_array($commandStatus, ['temp', 'validated']) || empty($paymentMode) || $paymentMode === 'unpaid');
+                    break;
+                    
+                // Filtres d'export et récupération
                 case 'exported':
                     $matches = ($exported === 'exported');
                     break;
@@ -221,9 +224,6 @@ class OrdersList extends CsvHandler {
                     break;
                 case 'not_retrieved':
                     $matches = (empty($retrievalDate));
-                    break;
-                case 'retrieved':
-                    $matches = (!empty($retrievalDate));
                     break;
                 case 'all':
                     $matches = true;
@@ -285,7 +285,9 @@ class OrdersList extends CsvHandler {
             'paid_today' => 0,
             'retrieved_today' => 0,
             'validated_orders' => 0,
-            'pending_orders' => 0,
+            'temp_orders' => 0,
+            'prepared_orders' => 0,
+            'cancelled_orders' => 0,
             'exported_orders' => 0,
             'retrieved_orders' => 0
         ];
@@ -311,14 +313,20 @@ class OrdersList extends CsvHandler {
                 }
             }
             
-            // Compteurs par statut de commande
+            // Compteurs par statut de commande unifié (v2.0)
             if (isset($order['command_status'])) {
                 switch ($order['command_status']) {
+                    case 'temp':
+                        $stats['temp_orders']++;
+                        break;
                     case 'validated':
                         $stats['validated_orders']++;
                         break;
-                    case 'pending':
-                        $stats['pending_orders']++;
+                    case 'paid':
+                        $stats['paid_orders']++;
+                        break;
+                    case 'prepared':
+                        $stats['prepared_orders']++;
                         break;
                     case 'retrieved':
                         $stats['retrieved_orders']++;
@@ -328,6 +336,9 @@ class OrdersList extends CsvHandler {
                         if ($retrievalDate && substr($retrievalDate, 0, 10) === $today) {
                             $stats['retrieved_today']++;
                         }
+                        break;
+                    case 'cancelled':
+                        $stats['cancelled_orders']++;
                         break;
                 }
             }

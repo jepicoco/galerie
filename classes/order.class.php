@@ -48,7 +48,8 @@ class Order extends CsvHandler {
             return false;
         }
         
-        $csvData = $this->read($this->csvFile, true, 18);
+        $csvData = $this->read($this->csvFile, true, 17);
+
         if ($csvData === false) {
             return false;
         }
@@ -122,7 +123,7 @@ class Order extends CsvHandler {
         
         $payMode = $paymentData['payment_mode'] ?? '';
         $payDesiredDate = $paymentData['desired_deposit_date'] ?? '';
-        $payDate = $paymentData['payment_date'] ?? '';
+        $payDate = date('Y-m-d H:i:s');
         $actualDepositDate = $paymentData['actual_deposit_date'] ?? '';
         
         // Si ce n'est pas un chèque, les dates sont identiques

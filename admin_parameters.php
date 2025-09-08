@@ -131,20 +131,6 @@ define('WATERMARK_ANGLE', -45);";
 }
 
 /**
- * Charger les données des activités depuis le fichier JSON
- */
-function loadActivitiesData() {
-    $dataFile = DATA_DIR . 'activities.json';
-    
-    if (file_exists($dataFile)) {
-        $content = file_get_contents($dataFile);
-        return json_decode($content, true) ?: [];
-    }
-    
-    return [];
-}
-
-/**
  * Vérifier si les dossiers requis existent
  */
 function ensureRequiredDirectories() {

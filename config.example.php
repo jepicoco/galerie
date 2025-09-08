@@ -84,6 +84,24 @@ $ORDER_STATUT = [
     'EXPORT_STATUS' => ['', 'exported']
 ];
 
+$ORDER_STATUT_PRINT = [
+    'pending' => 'En attente',
+    'validated' => 'Validée',
+    'cancelled' => 'Annulée',
+    'unpaid' => 'Non payée',
+    'paid' => 'Payée',
+    'refunded' => 'Remboursée',
+    'not_retrieved' => 'Non retirée',
+    'retrieved' => 'Retirée',
+    '' => '',
+    'exported' => 'Exportée',
+    'cash' => 'Espèces',
+    'check' => 'Chèque',
+    'card' => 'Carte bancaire',
+    'transfer' => 'Virement'
+
+];
+
 // ==========================================
 // CHEMINS DES DOSSIERS
 // ==========================================

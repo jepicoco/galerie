@@ -131,6 +131,8 @@ function processOrderPayment($paymentData) {
     try {
         // 1. Charger la commande avec la classe Order
         $order = new Order($reference);
+        $order->load();
+
         if (!$order->load()) {
             return ['success' => false, 'error' => 'Commande introuvable'];
         }
@@ -161,11 +163,16 @@ function processOrderPayment($paymentData) {
             return $markResult;
         }
         
-        $logger->adminAction('Commande réglée', [
-            'reference' => $reference,
-            'payment_mode' => $paymentMode,
-            'amount' => $orderData['total_price']
-        ]);
+        if(isset($logger)) {
+            // Log l'action de paiement
+            $logger->info('Paiement traité', [
+                'reference' => $reference,
+                'payment_mode' => $paymentMode,
+                'payment_date' => $paymentDate,
+                'desired_deposit_date' => $desiredDepositDate,
+                'actual_deposit_date' => $actualDepositDate
+            ]);
+        }
         
         return ['success' => true, 'message' => 'Règlement traité avec succès'];
         
