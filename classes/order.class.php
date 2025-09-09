@@ -136,7 +136,7 @@ class Order extends CsvHandler {
             11 => $payDesiredDate ?? '',
             12 => $payDate ?? '',
             13 => $actualDepositDate ?? '',
-            15 => $ORDER_STATUT['COMMAND_STATUS'][1] // validated
+            15 => $ORDER_STATUT['COMMAND_STATUS'][2] // paid (au lieu de validated)
         ];
         
         return $this->updateByValue(

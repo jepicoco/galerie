@@ -7,6 +7,7 @@ if (!defined('GALLERY_ACCESS')) {
 }
 
 require_once 'config.php';
+require_once 'classes/bom_safe_csv.php';
 
 try {
     require_once 'functions.php';
@@ -191,9 +192,8 @@ function exportToReglees($order, $paymentMode, $paymentDate, $desiredDepositDate
     
     // Créer l'en-tête si nouveau fichier
     if ($isNewFile) {
-        $bom = "\xEF\xBB\xBF";
-        $header = $bom . "Ref;Nom;Prenom;Email;Tel;Nb photos;Nb USB;Montant;Reglement;Date reglement;Date encaissement souhaitee;Date encaissement reelle\n";
-        if (file_put_contents($regleesFile, $header) === false) {
+        $header = "Ref;Nom;Prenom;Email;Tel;Nb photos;Nb USB;Montant;Reglement;Date reglement;Date encaissement souhaitee;Date encaissement reelle\n";
+        if (writeBOMSafeCSV($regleesFile, $header) === false) {
             return ['success' => false, 'error' => 'Impossible de créer le fichier des commandes réglées'];
         }
     }
@@ -217,7 +217,10 @@ function exportToReglees($order, $paymentMode, $paymentDate, $desiredDepositDate
         $actualDepositDate
     ]) . "\n";
     
-    $result = file_put_contents($regleesFile, $line, FILE_APPEND);
+    // Utiliser BOM-safe pour éviter l'accumulation
+    $existingContent = file_exists($regleesFile) ? file_get_contents($regleesFile) : '';
+    $newContent = $existingContent . $line;
+    $result = writeBOMSafeCSV($regleesFile, $newContent);
     
     if ($result === false) {
         return ['success' => false, 'error' => 'Impossible d\'écrire dans le fichier des commandes réglées'];
@@ -235,9 +238,8 @@ function exportToPreparer($order) {
     
     // Créer l'en-tête si nouveau fichier
     if ($isNewFile) {
-        $bom = "\xEF\xBB\xBF";
-        $header = $bom . "Ref;Nom;Prenom;Email;Tel;Nom du dossier;Nom de la photo;Quantite;Date de preparation;Date de recuperation\n";
-        if (file_put_contents($preparerFile, $header) === false) {
+        $header = "Ref;Nom;Prenom;Email;Tel;Nom du dossier;Nom de la photo;Quantite;Date de preparation;Date de recuperation\n";
+        if (writeBOMSafeCSV($preparerFile, $header) === false) {
             return ['success' => false, 'error' => 'Impossible de créer le fichier de préparation'];
         }
     }
@@ -269,7 +271,10 @@ function exportToPreparer($order) {
         ]) . "\n";
     }
     
-    $result = file_put_contents($preparerFile, $lines, FILE_APPEND);
+    // Utiliser BOM-safe pour éviter l'accumulation
+    $existingContent = file_exists($preparerFile) ? file_get_contents($preparerFile) : '';
+    $newContent = $existingContent . $lines;
+    $result = writeBOMSafeCSV($preparerFile, $newContent);
     
     if ($result === false) {
         return ['success' => false, 'error' => 'Impossible d\'écrire dans le fichier de préparation'];
@@ -327,7 +332,7 @@ function markOrderAsExported($reference) {
         return ['success' => false, 'error' => 'Commande introuvable'];
     }
     
-    $result = file_put_contents($csvFile, implode("\n", $updatedLines) . "\n");
+    $result = writeBOMSafeCSV($csvFile, implode("\n", $updatedLines) . "\n");
     
     if ($result === false) {
         return ['success' => false, 'error' => 'Impossible de sauvegarder le fichier'];
@@ -349,54 +354,360 @@ function payOrder($reference, $paymentData) {
 }
 
 /**
- * Exporter la liste de préparation - Version corrigée
+ * Exporter la liste de préparation - Version 3.0 CORRIGÉE
  * Génère un export complet pour l'imprimeur avec toutes les commandes paid/validated non récupérées
+ * + Ajoute automatiquement les commandes validated dans commandes_a_preparer.csv
+ * + Marque les commandes comme exported
+ * CORRECTION: Lecture directe du fichier CSV principal
  */
 function exportPreparationList() {
-    // Utiliser OrdersList pour récupérer les commandes à imprimer
-    require_once 'classes/autoload.php';
-    $ordersList = new OrdersList();
+    global $logger;
     
-    // Récupérer les commandes paid et validated (non retrieved)
-    $paidOrders = $ordersList->loadOrdersData('paid');
-    $validatedOrders = $ordersList->loadOrdersData('validated');
+    $csvFile = 'commandes/commandes.csv';
     
-    $allOrders = array_merge($paidOrders['orders'], $validatedOrders['orders']);
-    
-    // Filtrer les commandes déjà récupérées
-    $ordersToProcess = array_filter($allOrders, function($order) {
-        return $order['command_status'] !== 'retrieved' && empty($order['retrieval_date']);
-    });
-    
-    if (empty($ordersToProcess)) {
-        return ['success' => false, 'error' => 'Aucune commande à préparer (toutes sont déjà récupérées ou non validées)'];
+    if (!file_exists($csvFile)) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv introuvable'];
     }
     
-    // Générer le fichier CSV
+    // 1. Lire et parser le fichier CSV principal
+    $lines = file($csvFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (count($lines) < 2) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv vide'];
+    }
+    
+    $header = array_shift($lines);
+    
+    // 2. Analyser les commandes et les grouper par référence
+    $commandesParReference = [];
+    $allOrderLines = [];
+    
+    foreach ($lines as $lineIndex => $line) {
+        $data = str_getcsv($line, ';');
+        if (count($data) < 16) continue;
+        
+        $orderLine = [
+            'line_index' => $lineIndex,
+            'reference' => $data[0],
+            'lastname' => $data[1],
+            'firstname' => $data[2],  
+            'email' => $data[3],
+            'phone' => $data[4],
+            'date_commande' => $data[5],
+            'dossier' => $data[6], // Nom de l'activité
+            'photo_name' => $data[7],
+            'quantite' => intval($data[8]),
+            'montant' => floatval($data[9]),
+            'payment_mode' => $data[10],
+            'date_encaissement_souhaitee' => $data[11],
+            'date_encaissement' => $data[12], 
+            'date_depot' => $data[13],
+            'date_recuperation' => $data[14],
+            'command_status' => $data[15],
+            'exported' => isset($data[16]) ? $data[16] : ''
+        ];
+        
+        $allOrderLines[] = $orderLine;
+        
+        // Grouper par référence
+        if (!isset($commandesParReference[$orderLine['reference']])) {
+            $commandesParReference[$orderLine['reference']] = [
+                'reference' => $orderLine['reference'],
+                'lastname' => $orderLine['lastname'],
+                'firstname' => $orderLine['firstname'],
+                'email' => $orderLine['email'],
+                'phone' => $orderLine['phone'],
+                'date_commande' => $orderLine['date_commande'],
+                'command_status' => $orderLine['command_status'],
+                'exported' => $orderLine['exported'],
+                'date_recuperation' => $orderLine['date_recuperation'],
+                'photos' => [],
+                'line_indexes' => []
+            ];
+        }
+        
+        $commandesParReference[$orderLine['reference']]['photos'][] = [
+            'name' => $orderLine['photo_name'],
+            'dossier' => $orderLine['dossier'],
+            'quantity' => $orderLine['quantite'],
+            'price' => $orderLine['montant']
+        ];
+        
+        $commandesParReference[$orderLine['reference']]['line_indexes'][] = $lineIndex;
+    }
+    
+    // 3. Filtrer les commandes validated non exportées et non récupérées
+    $validatedToAdd = array_filter($commandesParReference, function($order) {
+        return $order['command_status'] === 'validated' 
+            && $order['exported'] !== 'exported'
+            && empty($order['date_recuperation']);
+    });
+    
+    if (empty($validatedToAdd)) {
+        return ['success' => false, 'error' => 'Aucune commande validated non exportée à traiter'];
+    }
+    
+    $addedToPreparerCount = 0;
+    $markedAsExportedCount = 0;
+    $totalPhotos = 0;
+    
+    // 4. Traiter chaque commande validated
+    foreach ($validatedToAdd as $order) {
+        // Ajouter à commandes_a_preparer.csv
+        $addResult = addOrderToPreparerFileFixed($order);
+        if ($addResult['success']) {
+            $addedToPreparerCount++;
+            $totalPhotos += count($order['photos']);
+        } else {
+            if (isset($logger)) {
+                $logger->warning('Erreur ajout preparer', [
+                    'reference' => $order['reference'],
+                    'error' => $addResult['error']
+                ]);
+            }
+        }
+        
+        // Marquer comme exported toutes les lignes de cette référence
+        $markResult = markOrderLinesAsExported($order['reference'], $order['line_indexes']);
+        if ($markResult['success']) {
+            $markedAsExportedCount++;
+        }
+    }
+    
+    // 5. Générer le fichier d'export pour téléchargement
     $timestamp = date('Y-m-d_H-i-s');
     $downloadFile = 'exports/preparation_complete_' . $timestamp . '.csv';
     
-    // Créer le dossier exports s'il n'existe pas
     if (!is_dir('exports')) {
         mkdir('exports', 0755, true);
     }
     
-    // Générer le contenu CSV
-    $csvContent = generatePreparationListContent($ordersToProcess);
+    // Générer contenu basé sur toutes les commandes paid/validated
+    $allEligibleOrders = array_filter($commandesParReference, function($order) {
+        return in_array($order['command_status'], ['paid', 'validated']) 
+            && empty($order['date_recuperation']);
+    });
     
-    $result = file_put_contents($downloadFile, $csvContent);
+    $csvContent = generatePreparationListContentFixed($allEligibleOrders);
+    
+    $result = writeBOMSafeCSV($downloadFile, $csvContent);
     
     if ($result !== false) {
+        if (isset($logger)) {
+            $logger->info('Export préparation - Commandes traitées', [
+                'added_to_preparer' => $addedToPreparerCount,
+                'marked_exported' => $markedAsExportedCount,
+                'total_validated' => count($validatedToAdd),
+                'total_photos' => $totalPhotos
+            ]);
+        }
+        
         return [
             'success' => true,
             'file' => $downloadFile,
             'message' => 'Liste de préparation complète générée',
-            'orders_count' => count($ordersToProcess),
-            'photos_count' => array_sum(array_column($ordersToProcess, 'total_photos'))
+            'orders_count' => count($allEligibleOrders),
+            'photos_count' => array_sum(array_map(function($o) { return count($o['photos']); }, $allEligibleOrders)),
+            'added_to_preparer' => $addedToPreparerCount,
+            'marked_exported' => $markedAsExportedCount
         ];
     } else {
         return ['success' => false, 'error' => 'Impossible de générer le fichier'];
     }
+}
+
+/**
+ * Version corrigée - Ajouter une commande au fichier commandes_a_preparer.csv
+ * @param array $order Données de la commande avec structure CSV directe
+ * @return array Résultat de l'opération
+ */
+function addOrderToPreparerFileFixed($order) {
+    $preparerFile = 'commandes/commandes_a_preparer.csv';
+    $isNewFile = !file_exists($preparerFile);
+    
+    try {
+        // Créer l'en-tête si nouveau fichier
+        if ($isNewFile) {
+            $header = "Ref;Nom;Prenom;Email;Tel;Nom du dossier;Nom de la photo;Quantite;Date de preparation;Date de recuperation\n";
+            if (writeBOMSafeCSV($preparerFile, $header) === false) {
+                return ['success' => false, 'error' => 'Impossible de créer le fichier de préparation'];
+            }
+        }
+        
+        // Préparer les lignes à ajouter (une par photo)
+        $lines = '';
+        foreach ($order['photos'] as $photo) {
+            $line = [
+                $order['reference'],
+                sanitizeCSVValue($order['lastname']),
+                sanitizeCSVValue($order['firstname']),
+                sanitizeCSVValue($order['email']),
+                sanitizeCSVValue($order['phone']),
+                sanitizeCSVValue($photo['dossier']), // Nom de l'activité directement du CSV
+                sanitizeCSVValue($photo['name']),
+                $photo['quantity'],
+                '', // Date de préparation (vide)
+                $order['date_recuperation'] ?? '' // Date de récupération
+            ];
+            
+            $lines .= implode(';', $line) . "\n";
+        }
+        
+        // Ajouter les lignes au fichier
+        // Utiliser BOM-safe pour éviter l'accumulation
+        $existingContent = file_exists($preparerFile) ? file_get_contents($preparerFile) : '';
+        $newContent = $existingContent . $lines;
+        $result = writeBOMSafeCSV($preparerFile, $newContent);
+        
+        if ($result === false) {
+            return ['success' => false, 'error' => 'Impossible d\'écrire dans le fichier de préparation'];
+        }
+        
+        return [
+            'success' => true,
+            'photos_added' => count($order['photos']),
+            'message' => 'Commande ajoutée au fichier de préparation'
+        ];
+        
+    } catch (Exception $e) {
+        error_log('Erreur addOrderToPreparerFileFixed: ' . $e->getMessage());
+        return ['success' => false, 'error' => 'Erreur lors de l\'ajout: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * Marquer toutes les lignes d'une commande comme exported dans le fichier principal
+ * @param string $reference Référence de la commande
+ * @param array $lineIndexes Index des lignes à marquer
+ * @return array Résultat de l'opération
+ */
+function markOrderLinesAsExported($reference, $lineIndexes) {
+    $csvFile = 'commandes/commandes.csv';
+    
+    if (!file_exists($csvFile)) {
+        return ['success' => false, 'error' => 'Fichier CSV introuvable'];
+    }
+    
+    try {
+        $lines = file($csvFile, FILE_IGNORE_NEW_LINES);
+        if ($lines === false) {
+            return ['success' => false, 'error' => 'Impossible de lire le fichier CSV'];
+        }
+        
+        $header = $lines[0];
+        $markedCount = 0;
+        
+        // Marquer les lignes spécifiées
+        foreach ($lineIndexes as $index) {
+            $realIndex = $index + 1; // +1 car on a enlevé l'en-tête
+            if (isset($lines[$realIndex])) {
+                $data = str_getcsv($lines[$realIndex], ';');
+                
+                // Vérifier que c'est bien la bonne référence
+                if ($data[0] === $reference) {
+                    // Étendre le tableau pour la colonne "exported" (position 16)
+                    while (count($data) < 17) {
+                        $data[] = '';
+                    }
+                    
+                    // Marquer comme exporté
+                    $data[16] = 'exported';
+                    
+                    // Sanitiser les données avant export CSV
+                    $sanitizedData = array_map('sanitizeCSVValue', $data);
+                    $lines[$realIndex] = implode(';', $sanitizedData);
+                    $markedCount++;
+                }
+            }
+        }
+        
+        if ($markedCount === 0) {
+            return ['success' => false, 'error' => 'Aucune ligne marquée'];
+        }
+        
+        // Sauvegarder le fichier
+        $result = writeBOMSafeCSV($csvFile, implode("\n", $lines) . "\n");
+        
+        if ($result === false) {
+            return ['success' => false, 'error' => 'Impossible de sauvegarder le fichier'];
+        }
+        
+        return [
+            'success' => true,
+            'marked_lines' => $markedCount,
+            'message' => "$markedCount ligne(s) marquée(s) comme exportées"
+        ];
+        
+    } catch (Exception $e) {
+        error_log('Erreur markOrderLinesAsExported: ' . $e->getMessage());
+        return ['success' => false, 'error' => 'Erreur lors du marquage: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * Formater le statut d'une commande pour l'affichage
+ * @param string $status Statut à formater
+ * @return string Statut formaté
+ */
+function formatOrderStatus($status) {
+    $statusMap = [
+        'unpaid' => 'Non payée',
+        'paid' => 'Payée',
+        'validated' => 'Validée',
+        'retrieved' => 'Retirée',
+        'cancelled' => 'Annulée',
+        'cash' => 'Espèces',
+        'check' => 'Chèque',
+        'card' => 'Carte bancaire',
+        'transfer' => 'Virement'
+    ];
+    
+    return $statusMap[$status] ?? $status;
+}
+
+/**
+ * Version corrigée - Génère le contenu CSV pour la liste de préparation
+ * @param array $orders Liste des commandes avec structure CSV directe
+ * @return string Contenu CSV
+ */
+function generatePreparationListContentFixed($orders) {
+    // En-tête CSV
+    $header = "Ref;Statut;Nom;Prenom;Email;Tel;Activite;Photo;Quantite;Prix_unitaire;Sous_total;Date_commande;Mode_paiement;Notes\n";
+    
+    $content = $header;
+    $totalPhotos = 0;
+    $totalAmount = 0;
+    
+    foreach ($orders as $order) {
+        foreach ($order['photos'] as $photo) {
+            $line = [
+                $order['reference'],
+                $order['command_status'],
+                sanitizeCSVValue($order['lastname']),
+                sanitizeCSVValue($order['firstname']),
+                sanitizeCSVValue($order['email']),
+                sanitizeCSVValue($order['phone']),
+                sanitizeCSVValue($photo['dossier']),
+                sanitizeCSVValue($photo['name']),
+                $photo['quantity'],
+                number_format($photo['price'], 2, ',', ''),
+                number_format($photo['price'] * $photo['quantity'], 2, ',', ''),
+                $order['date_commande'],
+                formatOrderStatus($order['payment_mode'] ?? ''),
+                '' // Notes vides pour l'imprimeur
+            ];
+            
+            $content .= implode(';', $line) . "\n";
+            $totalPhotos += $photo['quantity'];
+            $totalAmount += ($photo['price'] * $photo['quantity']);
+        }
+    }
+    
+    // Ajouter une ligne de résumé
+    $content .= "\n";
+    $content .= "RESUME;;;;;;;;" . $totalPhotos . ";;;" . number_format($totalAmount, 2, ',', '') . ";;;\n";
+    $content .= "COMMANDES_TOTAL;;;;;;;;" . count($orders) . ";;;;;;;;\n";
+    
+    return $content;
 }
 
 /**
@@ -405,13 +716,10 @@ function exportPreparationList() {
  * @return string Contenu CSV
  */
 function generatePreparationListContent($orders) {
-    // BOM UTF-8 pour Excel
-    $bom = "\xEF\xBB\xBF";
-    
     // En-tête CSV
     $header = "Ref;Statut;Nom;Prenom;Email;Tel;Activite;Photo;Quantite;Prix_unitaire;Sous_total;Date_commande;Mode_paiement;Notes\n";
     
-    $content = $bom . $header;
+    $content = $header;
     $totalPhotos = 0;
     $totalAmount = 0;
     
@@ -485,7 +793,7 @@ function exportDailyPayments($date) {
         mkdir('exports', 0755, true);
     }
     
-    $result = file_put_contents($downloadFile, implode("\n", $dailyPayments) . "\n");
+    $result = writeBOMSafeCSV($downloadFile, implode("\n", $dailyPayments) . "\n");
     
     if ($result) {
         return [
@@ -549,14 +857,14 @@ function archiveOldOrders($days = 30) {
         mkdir('archives', 0755, true);
     }
     
-    $archiveResult = file_put_contents($archiveFile, implode("\n", $archivedLines) . "\n");
+    $archiveResult = writeBOMSafeCSV($archiveFile, implode("\n", $archivedLines) . "\n");
     
     if ($archiveResult === false) {
         return ['success' => false, 'error' => 'Impossible de créer l\'archive'];
     }
     
     // Mettre à jour le fichier principal
-    $updateResult = file_put_contents($csvFile, implode("\n", $activeLines) . "\n");
+    $updateResult = writeBOMSafeCSV($csvFile, implode("\n", $activeLines) . "\n");
     
     if ($updateResult === false) {
         return ['success' => false, 'error' => 'Impossible de mettre à jour le fichier'];
@@ -708,7 +1016,7 @@ function generatePickingListsByActivity() {
         );
     }
     
-    $result = file_put_contents($pickingFile, $content);
+    $result = writeBOMSafeCSV($pickingFile, $content);
     
     if ($result) {
         return [
@@ -729,15 +1037,15 @@ function generatePickingListsByActivity() {
  * Version 1.0
  */
 function generatePickingListsByActivityCSV() {
-    $preparerFile = 'commandes/commandes_a_preparer.csv';
+    $csvFile = 'commandes/commandes.csv';
     
-    if (!file_exists($preparerFile)) {
-        return ['success' => false, 'error' => 'Aucune commande à préparer'];
+    if (!file_exists($csvFile)) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv introuvable'];
     }
     
-    $lines = file($preparerFile, FILE_IGNORE_NEW_LINES);
-    if (!$lines || count($lines) < 2) {
-        return ['success' => false, 'error' => 'Fichier de préparation vide'];
+    $lines = file($csvFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (count($lines) < 2) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv vide'];
     }
     
     // Ignorer l'en-tête
@@ -749,11 +1057,19 @@ function generatePickingListsByActivityCSV() {
         if (empty(trim($line))) continue;
         
         $data = str_getcsv($line, ';');
-        if (count($data) < 7) continue;
+        if (count($data) < 16) continue;
         
-        $activite = $data[5];
-        $photoNom = $data[6];
-        $quantite = intval($data[7]);
+        $commandStatus = $data[15]; // Statut commande
+        $dateRecuperation = $data[14]; // Date de récupération
+        
+        // MODIFICATION: Inclure toutes les commandes validated, pas seulement paid
+        if ($commandStatus !== 'validated' || !empty($dateRecuperation)) {
+            continue; // Ignorer les commandes non validated ou déjà récupérées
+        }
+        
+        $activite = $data[6];  // Dossier/Activité
+        $photoNom = $data[7];  // Nom photo
+        $quantite = intval($data[8]); // Quantité
         
         if (!isset($commandesParActivite[$activite])) {
             $commandesParActivite[$activite] = [];
@@ -792,10 +1108,9 @@ function generatePickingListsByActivityCSV() {
         mkdir('exports', 0755, true);
     }
     
-    // En-tête CSV avec BOM UTF-8
-    $bom = "\xEF\xBB\xBF";
+    // En-tête CSV
     $header = "Activite;Photo;Reference;Nom;Prenom;Quantite;Contact;Fait\n";
-    $csvContent = $bom . $header;
+    $csvContent = $header;
     
     foreach ($commandesParActivite as $activite => $photos) {
         foreach ($photos as $photoNom => $commandes) {
@@ -822,7 +1137,7 @@ function generatePickingListsByActivityCSV() {
         }
     }
     
-    $resultCSV = file_put_contents($pickingFileCSV, $csvContent);
+    $resultCSV = writeBOMSafeCSV($pickingFileCSV, $csvContent);
     
     if ($resultCSV) {
         return [
@@ -842,18 +1157,18 @@ function generatePickingListsByActivityCSV() {
  * Version 1.0
  */
 function exportSeparationGuide() {
-    $preparerFile = 'commandes/commandes_a_preparer.csv';
+    $csvFile = 'commandes/commandes.csv';
     
-    if (!file_exists($preparerFile)) {
-        return ['success' => false, 'error' => 'Aucune commande à préparer'];
+    if (!file_exists($csvFile)) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv introuvable'];
     }
     
-    $lines = file($preparerFile, FILE_IGNORE_NEW_LINES);
-    if (!$lines || count($lines) < 2) {
-        return ['success' => false, 'error' => 'Fichier de préparation vide'];
+    $lines = file($csvFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (count($lines) < 2) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv vide'];
     }
     
-    array_shift($lines); // Ignorer l'en-tête
+    array_shift($lines); // Enlever l'en-tête
     
     $photosParActivite = [];
     
@@ -861,11 +1176,19 @@ function exportSeparationGuide() {
         if (empty(trim($line))) continue;
         
         $data = str_getcsv($line, ';');
-        if (count($data) < 7) continue;
+        if (count($data) < 16) continue;
         
-        $activite = $data[5];
-        $photoNom = $data[6];
-        $quantite = intval($data[7]);
+        $commandStatus = $data[15]; // Statut commande
+        $dateRecuperation = $data[14]; // Date de récupération
+        
+        // MODIFICATION: Inclure toutes les commandes validated, pas seulement paid
+        if ($commandStatus !== 'validated' || !empty($dateRecuperation)) {
+            continue; // Ignorer les commandes non validated ou déjà récupérées
+        }
+        
+        $activite = $data[6];  // Dossier/Activité
+        $photoNom = $data[7];  // Nom photo
+        $quantite = intval($data[8]); // Quantité
         
         if (!isset($photosParActivite[$activite])) {
             $photosParActivite[$activite] = [];
@@ -907,7 +1230,7 @@ function exportSeparationGuide() {
         $content .= "\n";
     }
     
-    $result = file_put_contents($guideFile, $content);
+    $result = writeBOMSafeCSV($guideFile, $content);
     
     if ($result) {
         return [
@@ -926,18 +1249,18 @@ function exportSeparationGuide() {
  * Version 1.0
  */
 function exportPrinterSummary() {
-    $preparerFile = 'commandes/commandes_a_preparer.csv';
+    $csvFile = 'commandes/commandes.csv';
     
-    if (!file_exists($preparerFile)) {
-        return ['success' => false, 'error' => 'Aucune commande à préparer'];
+    if (!file_exists($csvFile)) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv introuvable'];
     }
     
-    $lines = file($preparerFile, FILE_IGNORE_NEW_LINES);
-    if (!$lines || count($lines) < 2) {
-        return ['success' => false, 'error' => 'Fichier de préparation vide'];
+    $lines = file($csvFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (count($lines) < 2) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv vide'];
     }
     
-    array_shift($lines);
+    array_shift($lines); // Enlever l'en-tête
     
     $photosParActivite = [];
     $photosTotales = [];
@@ -946,11 +1269,19 @@ function exportPrinterSummary() {
         if (empty(trim($line))) continue;
         
         $data = str_getcsv($line, ';');
-        if (count($data) < 7) continue;
+        if (count($data) < 16) continue;
         
-        $activite = $data[5];
-        $photoNom = $data[6];
-        $quantite = intval($data[7]);
+        $commandStatus = $data[15]; // Statut commande
+        $dateRecuperation = $data[14]; // Date de récupération
+        
+        // MODIFICATION: Inclure toutes les commandes validated, pas seulement paid
+        if ($commandStatus !== 'validated' || !empty($dateRecuperation)) {
+            continue; // Ignorer les commandes non validated ou déjà récupérées
+        }
+        
+        $activite = $data[6];  // Dossier/Activité
+        $photoNom = $data[7];  // Nom photo
+        $quantite = intval($data[8]); // Quantité
         
         // Par activité
         if (!isset($photosParActivite[$activite])) {
@@ -1000,7 +1331,7 @@ function exportPrinterSummary() {
         $content .= "-------------------------------------------------\n";
     }
     
-    $result = file_put_contents($summaryFile, $content);
+    $result = writeBOMSafeCSV($summaryFile, $content);
     
     if ($result) {
         return [
@@ -1020,15 +1351,15 @@ function exportPrinterSummary() {
  * Version 1.0
  */
 function checkActivityCoherence() {
-    $preparerFile = 'commandes/commandes_a_preparer.csv';
+    $csvFile = 'commandes/commandes.csv';
     
-    if (!file_exists($preparerFile)) {
-        return ['success' => false, 'error' => 'Aucune commande à préparer'];
+    if (!file_exists($csvFile)) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv introuvable'];
     }
     
-    $lines = file($preparerFile, FILE_IGNORE_NEW_LINES);
-    if (!$lines || count($lines) < 2) {
-        return ['success' => false, 'error' => 'Fichier de préparation vide'];
+    $lines = file($csvFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (count($lines) < 2) {
+        return ['success' => false, 'error' => 'Fichier commandes.csv vide'];
     }
     
     array_shift($lines);
@@ -1039,17 +1370,25 @@ function checkActivityCoherence() {
         if (empty(trim($line))) continue;
         
         $data = str_getcsv($line, ';');
-        if (count($data) < 7) continue;
+        if (count($data) < 16) continue;
         
-        $activite = $data[5];
+        $commandStatus = $data[15]; // Statut commande
+        $dateRecuperation = $data[14]; // Date de récupération
+        
+        // MODIFICATION: Inclure toutes les commandes validated, pas seulement paid
+        if ($commandStatus !== 'validated' || !empty($dateRecuperation)) {
+            continue; // Ignorer les commandes non validated ou déjà récupérées
+        }
+        
+        $activite = $data[6];  // Dossier/Activité
         
         if (!isset($commandesParActivite[$activite])) {
             $commandesParActivite[$activite] = [];
         }
         
         $commandesParActivite[$activite][] = [
-            'photo' => $data[6],
-            'quantite' => intval($data[7])
+            'photo' => $data[7],  // Nom photo
+            'quantite' => intval($data[8]) // Quantité
         ];
     }
     
@@ -1143,11 +1482,10 @@ function exportPreparationByActivity() {
             return strcmp($photoA, $photoB);
         });
         
-        // Préparer le contenu avec BOM UTF-8
-        $bom = "\xEF\xBB\xBF";
-        $contenu = $bom . $header . "\n" . implode("\n", $lignes) . "\n";
+        // Préparer le contenu
+        $contenu = $header . "\n" . implode("\n", $lignes) . "\n";
         
-        $resultat = file_put_contents($fichierActivite, $contenu);
+        $resultat = writeBOMSafeCSV($fichierActivite, $contenu);
         
         if ($resultat !== false) {
             $fichiers_generes[] = [
@@ -1192,7 +1530,7 @@ function exportPreparationByActivity() {
     $bom = "\xEF\xBB\xBF";
     $contenuConsolide = $bom . implode("\n", $lignesConsolidees) . "\n";
     
-    $resultatConsolide = file_put_contents($fichierConsolide, $contenuConsolide);
+    $resultatConsolide = writeBOMSafeCSV($fichierConsolide, $contenuConsolide);
     
     // Option 3: Fichier résumé avec statistiques
     $fichierResume = 'exports/resume_preparation_' . $timestamp . '.txt';
@@ -1235,7 +1573,7 @@ function exportPreparationByActivity() {
     $contenuResume .= "- Total exemplaires: " . $totalExemplaires . "\n";
     $contenuResume .= "- Fichier consolidé: " . basename($fichierConsolide) . "\n";
     
-    $resultatResume = file_put_contents($fichierResume, $contenuResume);
+    $resultatResume = writeBOMSafeCSV($fichierResume, $contenuResume);
     
     // Vérifier le succès de l'opération
     if (count($fichiers_generes) > 0 && $resultatConsolide && $resultatResume) {

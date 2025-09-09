@@ -126,7 +126,7 @@ class CsvHandler {
     }
     
     /**
-     * Écrit des données dans un fichier CSV avec sanitisation automatique
+     * Écrit des données dans un fichier CSV avec sanitisation automatique et BOM-safe
      * @param string $filePath Chemin vers le fichier CSV
      * @param array $data Données à écrire
      * @param array $header En-tête du fichier (optionnel)
@@ -136,6 +136,35 @@ class CsvHandler {
      * @return bool Succès de l'opération
      */
     public function write($filePath, $data, $header = null, $append = false, $addBom = false, $sanitize = true) {
+        // Si c'est un mode append, utiliser l'ancienne méthode
+        if ($append) {
+            return $this->writeLegacyMethod($filePath, $data, $header, $append, $addBom, $sanitize);
+        }
+        
+        // Pour les nouvelles écritures, utiliser la méthode BOM-safe
+        $content = '';
+        
+        // Sanitiser l'en-tête si fourni
+        if ($header !== null) {
+            $sanitizedHeader = $sanitize ? $this->sanitizeCSVData([$header])[0] : $header;
+            $content .= '"' . implode('"' . $this->delimiter . '"', $sanitizedHeader) . '"' . "\n";
+        }
+        
+        // Sanitiser et traiter les données
+        $processedData = $sanitize ? $this->sanitizeCSVData($data) : $data;
+        foreach ($processedData as $row) {
+            $content .= '"' . implode('"' . $this->delimiter . '"', $row) . '"' . "\n";
+        }
+        
+        // Utiliser writeBOMSafeCSV pour éviter l'accumulation
+        require_once 'classes/bom_safe_csv.php';
+        return writeBOMSafeCSV($filePath, $content, $addBom) !== false;
+    }
+    
+    /**
+     * Méthode legacy pour l'append (conservée pour compatibilité)
+     */
+    private function writeLegacyMethod($filePath, $data, $header = null, $append = false, $addBom = false, $sanitize = true) {
         $mode = $append ? 'a' : 'w';
         $handle = fopen($filePath, $mode);
         
