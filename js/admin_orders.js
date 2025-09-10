@@ -178,8 +178,25 @@ async function exportPreparationList() {
         if (result.success) {
             const message = result.message || 'Liste de préparation générée';
             const details = result.orders_count ? ` (${result.orders_count} commandes, ${result.photos_count} photos)` : '';
-            showNotification(message + details, 'success');
+            
+            // Afficher les informations sur les commandes ajoutées
+            let addedInfo = '';
+            if (result.added_to_preparer && result.added_to_preparer > 0) {
+                addedInfo = ` + ${result.added_to_preparer} commande(s) validated ajoutée(s)`;
+            }
+            
+            showNotification(message + details + addedInfo, 'success');
             downloadFile(result.file);
+            
+            // Notification supplémentaire si des commandes ont été traitées
+            if (result.added_to_preparer && result.added_to_preparer > 0) {
+                setTimeout(() => {
+                    showNotification(
+                        `✅ ${result.added_to_preparer} commande(s) ajoutée(s) dans commandes_a_preparer.csv et marquée(s) comme exportées`, 
+                        'info'
+                    );
+                }, 1500);
+            }
         } else {
             showNotification('Erreur: ' + result.error, 'error');
         }
@@ -1108,3 +1125,84 @@ function sendOrderConfirmationEmail() {
         confirmButton.disabled = false;
     });
 }
+
+/**
+ * Imprimer le bon de commande
+ * @param {string} reference - Référence de la commande à imprimer
+ */
+function printOrderSlip(reference = null) {
+    // Utiliser la référence passée ou celle stockée globalement
+    const orderReference = reference || currentOrderReference;
+    
+    if (!orderReference) {
+        showNotification('Aucune commande sélectionnée pour l\'impression', 'error');
+        return;
+    }
+    
+    // Ouvrir la fenêtre d'impression avec la référence
+    const printUrl = `order_print.php?reference=${encodeURIComponent(orderReference)}`;
+    const printWindow = window.open(printUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+    
+    if (!printWindow) {
+        showNotification('Impossible d\'ouvrir la fenêtre d\'impression (bloqueur de pop-up ?)', 'error');
+        return;
+    }
+    
+    // Optionnel : déclencher l'impression automatiquement quand la page se charge
+    printWindow.addEventListener('load', function() {
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+        }, 1000);
+    });
+}
+
+// ================================
+// EXPOSITION GLOBALE DES FONCTIONS
+// ================================
+
+// APPROCHE DIRECTE : Exposer immédiatement les fonctions au scope global
+console.log('🔄 Exposition des fonctions admin_orders.js...');
+
+// Fonctions critiques pour les boutons HTML
+window.showPaymentModal = showPaymentModal;
+window.showContactModal = showContactModal;
+window.showDetailsModal = showDetailsModal;
+window.showEmailConfirmationModal = showEmailConfirmationModal;
+window.sendOrderConfirmationEmail = sendOrderConfirmationEmail;
+window.printOrderSlip = printOrderSlip;
+window.copyToClipboard = copyToClipboard;
+
+// Fonctions d'export et actions
+window.exportSeparationGuide = exportSeparationGuide;
+window.exportPrinterSummary = exportPrinterSummary;
+window.generatePickingListsCSV = generatePickingListsCSV;
+window.exportPreparationList = exportPreparationList;
+window.exportDailyPayments = exportDailyPayments;
+window.checkCoherence = checkCoherence;
+window.archiveOldOrders = archiveOldOrders;
+
+// Fonctions modales
+window.showModal = showModal;
+window.closeModal = closeModal;
+window.closeAllModals = closeAllModals;
+window.showImagePreview = showImagePreview;
+window.closeImagePreview = closeImagePreview;
+window.showCoherenceModal = showCoherenceModal;
+window.showDownloadOptionsModal = showDownloadOptionsModal;
+
+// Fonctions utilitaires
+window.setupEventListeners = setupEventListeners;
+window.setupPaymentFormLogic = setupPaymentFormLogic;
+window.downloadFile = downloadFile;
+window.showNotification = showNotification;
+window.removeNotification = removeNotification;
+window.getNextFridays = getNextFridays;
+window.handleImageError = handleImageError;
+window.checkScrollIndicator = checkScrollIndicator;
+window.getActivityPrice = getActivityPrice;
+window.getActivityTypeInfo = getActivityTypeInfo;
+window.generateCoherenceReport = generateCoherenceReport;
+window.generateActivityFilesList = generateActivityFilesList;
+
+console.log('✅ Admin_orders.js - Fonctions exposées au scope global');

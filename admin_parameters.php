@@ -126,6 +126,73 @@ define('WATERMARK_ANGLE', -45);";
                 echo "</div>";
                 echo "</div>";
                 break;
+
+            case 'download_csv':
+                if (!isset($_POST['csv_type'])) {
+                    header('Location: admin_parameters.php?error=missing_type');
+                    exit;
+                }
+                
+                $csvType = $_POST['csv_type'];
+                $allowedTypes = [
+                    'commandes' => 'commandes.csv',
+                    'commandes_a_preparer' => 'commandes_a_preparer.csv',
+                    'commandes_reglees' => 'commandes_reglees.csv'
+                ];
+                
+                if (!array_key_exists($csvType, $allowedTypes)) {
+                    header('Location: admin_parameters.php?error=invalid_type');
+                    exit;
+                }
+                
+                $filename = $allowedTypes[$csvType];
+                $filepath = 'commandes/' . $filename;
+                
+                // Vérifier que le fichier existe
+                if (!file_exists($filepath)) {
+                    header('Location: admin_parameters.php?error=file_not_found&file=' . urlencode($filename));
+                    exit;
+                }
+                
+                // Vérifier que le fichier est lisible
+                if (!is_readable($filepath)) {
+                    header('Location: admin_parameters.php?error=file_not_readable&file=' . urlencode($filename));
+                    exit;
+                }
+                
+                // Log de l'action de téléchargement
+                $logger->adminAction('download_csv', [
+                    'csv_type' => $csvType,
+                    'filename' => $filename,
+                    'filesize' => filesize($filepath),
+                    'user_ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+                ]);
+                
+                // Préparer le nom de fichier avec timestamp
+                $timestamp = date('Y-m-d_H-i');
+                $downloadName = pathinfo($filename, PATHINFO_FILENAME) . '_' . $timestamp . '.csv';
+                
+                // Headers pour le téléchargement
+                header('Content-Type: text/csv; charset=utf-8');
+                header('Content-Disposition: attachment; filename="' . $downloadName . '"');
+                header('Content-Length: ' . filesize($filepath));
+                header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+                header('Pragma: public');
+                
+                // Nettoyer le buffer de sortie
+                if (ob_get_level()) {
+                    ob_end_clean();
+                }
+                
+                // Envoyer le fichier
+                if (readfile($filepath) === false) {
+                    header('HTTP/1.1 500 Internal Server Error');
+                    echo 'Erreur lors de la lecture du fichier';
+                } else {
+                    // Sortie réussie, pas de redirection nécessaire
+                }
+                exit;
+                break;
         }
     }
 }
@@ -151,12 +218,80 @@ function ensureRequiredDirectories() {
     }
 }
 
-// Message de succès après redirection
+// Messages de succès et d'erreur après redirection
 if (isset($_GET['watermark_updated'])) {
     $success_message = "Configuration du watermark mise à jour avec succès.";
 }
 
+// Gestion des erreurs de téléchargement CSV
+if (isset($_GET['error'])) {
+    switch ($_GET['error']) {
+        case 'missing_type':
+            $error_message = "Type de fichier CSV manquant.";
+            break;
+        case 'invalid_type':
+            $error_message = "Type de fichier CSV invalide.";
+            break;
+        case 'file_not_found':
+            $filename = $_GET['file'] ?? 'inconnu';
+            $error_message = "Fichier CSV non trouvé : " . htmlspecialchars($filename);
+            break;
+        case 'file_not_readable':
+            $filename = $_GET['file'] ?? 'inconnu';
+            $error_message = "Impossible de lire le fichier CSV : " . htmlspecialchars($filename);
+            break;
+        default:
+            $error_message = "Erreur inconnue lors du téléchargement.";
+    }
+}
+
 $watermarkConfig = getWatermarkConfig();
+
+/**
+ * Obtenir les informations des fichiers CSV
+ */
+function getCsvFilesInfo() {
+    $csvFiles = [
+        'commandes' => [
+            'name' => 'Commandes complètes',
+            'filename' => 'commandes.csv',
+            'description' => 'Toutes les commandes (validées et temporaires)',
+            'icon' => '📊'
+        ],
+        'commandes_a_preparer' => [
+            'name' => 'Commandes à préparer',
+            'filename' => 'commandes_a_preparer.csv',
+            'description' => 'Commandes payées en attente de préparation',
+            'icon' => '📋'
+        ],
+        'commandes_reglees' => [
+            'name' => 'Commandes réglées',
+            'filename' => 'commandes_reglees.csv',
+            'description' => 'Commandes payées prêtes pour le retrait',
+            'icon' => '✅'
+        ]
+    ];
+    
+    foreach ($csvFiles as $key => &$fileInfo) {
+        $filepath = 'commandes/' . $fileInfo['filename'];
+        
+        if (file_exists($filepath) && is_readable($filepath)) {
+            $fileInfo['exists'] = true;
+            $fileInfo['size'] = filesize($filepath);
+            $fileInfo['size_formatted'] = formatBytes($fileInfo['size']);
+            $fileInfo['modified'] = filemtime($filepath);
+            $fileInfo['modified_formatted'] = date('d/m/Y H:i', $fileInfo['modified']);
+        } else {
+            $fileInfo['exists'] = false;
+            $fileInfo['size'] = 0;
+            $fileInfo['size_formatted'] = 'N/A';
+            $fileInfo['modified'] = 0;
+            $fileInfo['modified_formatted'] = 'N/A';
+        }
+    }
+    
+    return $csvFiles;
+}
 
 /**
  * Générer tous les thumbnails et images redimensionnées
@@ -647,6 +782,12 @@ if (isset($_POST['ajax_action'])) {
                 </div>
             <?php endif; ?>
 
+            <?php if (isset($error_message)): ?>
+                <div class="alert alert-error">
+                    ❌ <?php echo htmlspecialchars($error_message); ?>
+                </div>
+            <?php endif; ?>
+
         
             <!-- Configuration Watermark -->
             <section class="config-section">
@@ -836,6 +977,93 @@ define('SMTP_SECURE', 'tls');</code></pre>
                             <div class="system-actions">
                                 <button id="run-diagnostic" class="btn btn-secondary">🔍 Diagnostic complet</button>
                                 <div id="diagnostic-result" class="test-result" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Nouvelle section Téléchargement CSV -->
+            <section class="config-section">
+                <div class="accordion-section">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <h3>📥 Téléchargement des Données CSV</h3>
+                        <span class="accordion-toggle">▼</span>
+                    </div>
+                    
+                    <div class="accordion-content">
+                        <div class="accordion-inner">
+                            <div class="csv-downloads-info">
+                                <p>Téléchargez les dernières versions des fichiers de commandes au format CSV pour analyse externe ou sauvegarde.</p>
+                            </div>
+                            
+                            <?php 
+                            $csvFiles = getCsvFilesInfo();
+                            ?>
+                            
+                            <div class="csv-files-grid">
+                                <?php foreach ($csvFiles as $csvType => $fileInfo): ?>
+                                    <div class="csv-file-card <?php echo $fileInfo['exists'] ? 'available' : 'unavailable'; ?>">
+                                        <div class="csv-file-header">
+                                            <div class="csv-file-icon"><?php echo $fileInfo['icon']; ?></div>
+                                            <div class="csv-file-title">
+                                                <h4><?php echo htmlspecialchars($fileInfo['name']); ?></h4>
+                                                <p class="csv-file-description"><?php echo htmlspecialchars($fileInfo['description']); ?></p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="csv-file-details">
+                                            <div class="csv-file-metadata">
+                                                <div class="metadata-item">
+                                                    <strong>Fichier :</strong> 
+                                                    <code><?php echo htmlspecialchars($fileInfo['filename']); ?></code>
+                                                </div>
+                                                <div class="metadata-item">
+                                                    <strong>Taille :</strong> 
+                                                    <span class="file-size"><?php echo $fileInfo['size_formatted']; ?></span>
+                                                </div>
+                                                <div class="metadata-item">
+                                                    <strong>Modifié :</strong> 
+                                                    <span class="file-date"><?php echo $fileInfo['modified_formatted']; ?></span>
+                                                </div>
+                                                <div class="metadata-item">
+                                                    <strong>Statut :</strong> 
+                                                    <span class="file-status <?php echo $fileInfo['exists'] ? 'status-ok' : 'status-error'; ?>">
+                                                        <?php echo $fileInfo['exists'] ? '✅ Disponible' : '❌ Indisponible'; ?>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="csv-file-actions">
+                                                <?php if ($fileInfo['exists']): ?>
+                                                    <form method="post" style="display: inline;">
+                                                        <input type="hidden" name="action" value="download_csv">
+                                                        <input type="hidden" name="csv_type" value="<?php echo htmlspecialchars($csvType); ?>">
+                                                        <button type="submit" class="btn btn-primary csv-download-btn">
+                                                            <span class="btn-icon">📥</span>
+                                                            <span class="btn-text">Télécharger</span>
+                                                        </button>
+                                                    </form>
+                                                <?php else: ?>
+                                                    <button class="btn btn-secondary" disabled>
+                                                        <span class="btn-icon">⚠️</span>
+                                                        <span class="btn-text">Non disponible</span>
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            
+                            <div class="csv-help">
+                                <h4>💡 Informations sur les fichiers CSV</h4>
+                                <ul>
+                                    <li><strong>Encodage :</strong> UTF-8 avec BOM pour compatibilité Excel</li>
+                                    <li><strong>Séparateur :</strong> Point-virgule (;)</li>
+                                    <li><strong>Format de téléchargement :</strong> nom_fichier_YYYY-MM-DD_HH-MM.csv</li>
+                                    <li><strong>Mise à jour :</strong> Les fichiers sont générés automatiquement lors des actions sur les commandes</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
