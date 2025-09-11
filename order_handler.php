@@ -565,7 +565,7 @@ function addOrderToCSV($order, $ordersDir) {
         // En-tête CSV complet avec BOM UTF-8
         if ($isNewFile) {
             $bom = "\xEF\xBB\xBF";
-            $header = "REF;Nom;Prenom;Email;Telephone;Date commande;Dossier;N de la photo;Quantite;Montant Total;Mode de paiement;Date encaissement souhaitee;Date encaissement;Date depot;Date de recuperation;Statut commande;Exported\n";
+            $header = $bom . "REF;Nom;Prenom;Email;Telephone;Date commande;Dossier;N de la photo;Quantite;Montant Total;Mode de paiement;Date encaissement souhaitee;Date encaissement;Date depot;Date de recuperation;Statut commande;Exported;Date prevue recuperation\n";
             if (file_put_contents($excelFile, $header) === false) {
                 error_log("Impossible de créer le fichier CSV: $excelFile");
                 return false;
@@ -601,10 +601,7 @@ function addOrderToCSV($order, $ordersDir) {
                 cleanCSVValue($order['retrieval_date'] ?? ''), //Date de recuperation                       - 15
                 cleanCSVValue($order['status'] ?? $ORDER_STATUT['COMMAND_STATUS'][0]),  //Statut commande   - 16
                 cleanCSVValue($order['exported'] ?? $ORDER_STATUT['EXPORT_STATUS'][0]), //Exported        - 17
-                //cleanCSVValue('')
-
-
-                
+                cleanCSVValue($order['expected_retrieval_date'] ?? '') //Date prevue recuperation              - 18
             ];
             
             $lines[] = implode(';', $cleanData);

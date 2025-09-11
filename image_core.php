@@ -8,6 +8,71 @@ if (!defined('GALLERY_ACCESS')) {
 }
 
 /**
+ * Lire l'orientation EXIF d'une image
+ */
+function getImageOrientation($imagePath) {
+    if (!extension_loaded('exif') || !function_exists('exif_read_data')) {
+        return 1; // Orientation normale par défaut
+    }
+    
+    $imageType = exif_imagetype($imagePath);
+    if ($imageType !== IMAGETYPE_JPEG) {
+        return 1; // EXIF uniquement supporté pour JPEG
+    }
+    
+    $exifData = @exif_read_data($imagePath);
+    if ($exifData === false || !isset($exifData['Orientation'])) {
+        return 1; // Orientation normale par défaut
+    }
+    
+    return $exifData['Orientation'];
+}
+
+/**
+ * Corriger l'orientation d'une image selon les données EXIF
+ */
+function fixImageOrientation($image, $orientation) {
+    if (!$image || $orientation <= 1 || $orientation > 8) {
+        return $image;
+    }
+    
+    switch ($orientation) {
+        case 2:
+            // Miroir horizontal
+            imageflip($image, IMG_FLIP_HORIZONTAL);
+            break;
+        case 3:
+            // Rotation 180°
+            $image = imagerotate($image, 180, 0);
+            break;
+        case 4:
+            // Miroir vertical
+            imageflip($image, IMG_FLIP_VERTICAL);
+            break;
+        case 5:
+            // Miroir horizontal + rotation 90° sens horaire
+            imageflip($image, IMG_FLIP_HORIZONTAL);
+            $image = imagerotate($image, -90, 0);
+            break;
+        case 6:
+            // Rotation 90° sens horaire
+            $image = imagerotate($image, -90, 0);
+            break;
+        case 7:
+            // Miroir horizontal + rotation 90° sens anti-horaire
+            imageflip($image, IMG_FLIP_HORIZONTAL);
+            $image = imagerotate($image, 90, 0);
+            break;
+        case 8:
+            // Rotation 90° sens anti-horaire
+            $image = imagerotate($image, 90, 0);
+            break;
+    }
+    
+    return $image;
+}
+
+/**
  * Vérifier si l'image est en cache et si elle est valide
  */
 function isCacheValid($cacheFilePath, $originalFilePath) {
@@ -78,6 +143,14 @@ function generateThumbnail($sourcePath, $thumbnailPath, $width = null, $height =
     if (!$sourceImage) {
         return false;
     }
+    
+    // Correction de l'orientation EXIF
+    $orientation = getImageOrientation($sourcePath);
+    $sourceImage = fixImageOrientation($sourceImage, $orientation);
+    
+    // Recalculer les dimensions après rotation éventuelle
+    $sourceWidth = imagesx($sourceImage);
+    $sourceHeight = imagesy($sourceImage);
     
     $ratio = min($width / $sourceWidth, $height / $sourceHeight);
     $thumbWidth = intval($sourceWidth * $ratio);
@@ -179,6 +252,19 @@ function resizeImage($sourcePath, $outputPath, $maxWidth, $maxHeight, $quality =
     if (!$sourceImage) {
         return false;
     }
+    
+    // Correction de l'orientation EXIF
+    $orientation = getImageOrientation($sourcePath);
+    $sourceImage = fixImageOrientation($sourceImage, $orientation);
+    
+    // Recalculer les dimensions après rotation éventuelle
+    $sourceWidth = imagesx($sourceImage);
+    $sourceHeight = imagesy($sourceImage);
+    
+    // Recalculer le ratio et les nouvelles dimensions
+    $ratio = min($maxWidth / $sourceWidth, $maxHeight / $sourceHeight);
+    $newWidth = intval($sourceWidth * $ratio);
+    $newHeight = intval($sourceHeight * $ratio);
     
     $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
     
