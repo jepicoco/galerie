@@ -433,6 +433,9 @@ function openImageViewer(activityKey, photoName) {
     imageModal.style.display = 'block';
     resetImageViewer();
     
+    // Mettre à jour les informations de navigation
+    updateImageNavigationInfo();
+    
     // Pré-charger l'image redimensionnée
     loadModalImage(currentModalPhoto.photoPath);
 }
@@ -570,6 +573,77 @@ function navigateImage(direction) {
     // Mettre à jour l'alt text
     const modalImage = document.getElementById('modal-image');
     modalImage.alt = newPhotoName;
+    
+    // Mettre à jour les informations de navigation
+    updateImageNavigationInfo();
+}
+
+// Fonction pour mettre à jour les informations de navigation dans la modale
+function updateImageNavigationInfo() {
+    // Mettre à jour la position courante
+    const currentPositionEl = document.getElementById('current-photo-position');
+    const totalPhotosEl = document.getElementById('total-photos-count');
+    const progressFillEl = document.getElementById('image-progress-fill');
+    const activityNameEl = document.getElementById('current-activity-name');
+    
+    if (currentPositionEl) {
+        currentPositionEl.textContent = currentPhotoIndex + 1;
+    }
+    
+    if (totalPhotosEl) {
+        totalPhotosEl.textContent = currentGalleryPhotos.length;
+    }
+    
+    // Mettre à jour la barre de progression
+    if (progressFillEl && currentGalleryPhotos.length > 0) {
+        const percentage = ((currentPhotoIndex + 1) / currentGalleryPhotos.length) * 100;
+        progressFillEl.style.width = percentage + '%';
+    }
+    
+    // Mettre à jour le nom de l'activité
+    if (activityNameEl && currentActivityKey && activities[currentActivityKey]) {
+        activityNameEl.textContent = activities[currentActivityKey].name || currentActivityKey;
+    }
+}
+
+// Fonction pour naviguer directement vers une photo spécifique
+function jumpToPhoto(index) {
+    if (!currentGalleryPhotos || currentGalleryPhotos.length === 0) return;
+    
+    // Vérifier que l'index est valide
+    if (index < 0 || index >= currentGalleryPhotos.length) return;
+    
+    // Si nous sommes déjà sur cette photo, ne rien faire
+    if (index === currentPhotoIndex) return;
+    
+    // Mettre à jour l'index
+    currentPhotoIndex = index;
+    
+    // Récupérer la nouvelle photo
+    const newPhoto = currentGalleryPhotos[currentPhotoIndex];
+    const newPhotoName = getPhotoName(newPhoto);
+    
+    // Mettre à jour currentModalPhoto
+    currentModalPhoto = {
+        activityKey: currentActivityKey,
+        photoName: newPhotoName,
+        photoPath: getPhotoUrl(newPhoto, 'resized'),
+        originalPath: getPhotoUrl(newPhoto, 'original'),
+        thumbPath: getPhotoUrl(newPhoto, 'thumbnail')
+    };
+    
+    // Réinitialiser le zoom et la position
+    resetImageViewer();
+    
+    // Charger la nouvelle image
+    loadModalImage(currentModalPhoto.photoPath);
+    
+    // Mettre à jour l'alt text
+    const modalImage = document.getElementById('modal-image');
+    modalImage.alt = newPhotoName;
+    
+    // Mettre à jour les informations de navigation
+    updateImageNavigationInfo();
 }
 
 // Fonction pour obtenir l'image en haute qualité (pour téléchargement ou zoom)
@@ -830,6 +904,22 @@ document.addEventListener('keydown', function(e) {
             case 'ArrowRight':
                 e.preventDefault();
                 navigateImage('next');
+                break;
+            case 'Home':
+                e.preventDefault();
+                jumpToPhoto(0);
+                break;
+            case 'End':
+                e.preventDefault();
+                jumpToPhoto(currentGalleryPhotos.length - 1);
+                break;
+            case 'PageUp':
+                e.preventDefault();
+                jumpToPhoto(Math.max(0, currentPhotoIndex - 10));
+                break;
+            case 'PageDown':
+                e.preventDefault();
+                jumpToPhoto(Math.min(currentGalleryPhotos.length - 1, currentPhotoIndex + 10));
                 break;
             case 'ArrowUp':
                 e.preventDefault();

@@ -414,6 +414,19 @@ $sortedActivities = array_merge($featuredActivities, $normalActivities);
         <div class="modal-content image-content">
             <span class="close image-close">&times;</span>
             <div class="image-container">
+                <!-- Indicateur de navigation en haut -->
+                <div class="image-navigation-info">
+                    <div class="activity-name-display">
+                        <span id="current-activity-name"></span>
+                    </div>
+                    <div class="position-indicator">
+                        <span id="current-photo-position">1</span> / <span id="total-photos-count">1</span>
+                    </div>
+                    <div class="position-progress-bar">
+                        <div class="progress-fill" id="image-progress-fill"></div>
+                    </div>
+                </div>
+                
                 <img id="modal-image" src="" alt="">
                 
                 <!-- Bouton d'ajout au panier dans la modal -->
