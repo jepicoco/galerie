@@ -39,7 +39,7 @@ class OrdersList extends CsvHandler {
             return ['orders' => [], 'raw_data' => []];
         }
         
-        $csvData = $this->read($this->csvFile, true, 17);
+        $csvData = $this->read($this->csvFile, true, 18); // Nouvelle structure avec 18 colonnes
         if ($csvData === false) {
             return ['orders' => [], 'raw_data' => []];
         }
@@ -57,7 +57,7 @@ class OrdersList extends CsvHandler {
             $data = $row['data'];
             
             // S'assurer que nous avons toutes les colonnes nécessaires (padding avec des chaînes vides)
-            while (count($data) < 17) {
+            while (count($data) < 18) {
                 $data[] = '';
             }
             
@@ -68,6 +68,10 @@ class OrdersList extends CsvHandler {
 
             // Normaliser les données
             $data = array_map('trim', $data);
+            
+            // Extraire les dates de récupération
+            $actualRetrievalDate = $data[14] ?? '';    // Date réelle de récupération - index 14
+            $expectedRetrievalDate = $data[17] ?? '';  // Date prévue de récupération - index 17
             
             // Debug pour la première ligne
             if ($ref === 'CMD20250804154460') {
@@ -98,7 +102,9 @@ class OrdersList extends CsvHandler {
                     'activity_key' => $data[6],
                     'photos' => [],
                     'quantity' => 0,
-                    'retrieval_date' => $data[14],
+                    'actual_retrieval_date' => $actualRetrievalDate,    // Date réelle de récupération
+                    'expected_retrieval_date' => $expectedRetrievalDate, // Date prévue de récupération
+                    'retrieval_date' => $expectedRetrievalDate ?: $actualRetrievalDate, // Compatibilité: prévue ou réelle
                     'desired_payment_date' => $data[11],
                     'actual_payment_date' => $data[12],
                     'command_status' => $commandStatus,
@@ -106,7 +112,10 @@ class OrdersList extends CsvHandler {
                     'exported' => $exported === 'exported',
                     'created_at' => $this->getOrderCreationDate($ref),
                     'total_photos' => 0,
-                    'amount' => 0
+                    'amount' => 0,
+                    'is_urgent' => false, // Sera calculé plus tard
+                    'is_overdue' => false, // Sera calculé plus tard
+                    'days_until_retrieval' => null // Sera calculé plus tard
                 ];
             }
             
@@ -129,8 +138,41 @@ class OrdersList extends CsvHandler {
             $this->orders[$ref]['total_price'] += $subtotal;
         }
         
-        // Trier par date de création (plus récent en premier)
+        // Calculer l'urgence et les jours jusqu'à récupération
+        $today = date('Y-m-d');
+        foreach ($this->orders as &$order) {
+            if (!empty($order['expected_retrieval_date'])) {
+                $expectedDate = substr($order['expected_retrieval_date'], 0, 10); // Extraire YYYY-MM-DD
+                $daysUntil = (strtotime($expectedDate) - strtotime($today)) / (24 * 3600);
+                
+                $order['days_until_retrieval'] = (int)$daysUntil;
+                $order['is_urgent'] = ($daysUntil <= 1); // Urgent si récupération dans 1 jour ou moins
+                $order['is_overdue'] = ($daysUntil < 0); // En retard si date dépassée
+            }
+        }
+        
+        // Trier par urgence puis par date prévue de récupération
         uasort($this->orders, function($a, $b) {
+            // Priorité 1: Commandes en retard (overdue)
+            if ($a['is_overdue'] !== $b['is_overdue']) {
+                return $b['is_overdue'] - $a['is_overdue']; // En retard en premier
+            }
+            
+            // Priorité 2: Commandes urgentes
+            if ($a['is_urgent'] !== $b['is_urgent']) {
+                return $b['is_urgent'] - $a['is_urgent']; // Urgentes en premier
+            }
+            
+            // Priorité 3: Tri par date prévue de récupération (plus proche en premier)
+            $dateA = $a['expected_retrieval_date'] ?: '9999-12-31'; // Date très lointaine si vide
+            $dateB = $b['expected_retrieval_date'] ?: '9999-12-31';
+            $dateDiff = strtotime($dateA) - strtotime($dateB);
+            
+            if ($dateDiff !== 0) {
+                return $dateDiff; // Plus proche en premier
+            }
+            
+            // Priorité 4: Date de création (plus récent en premier)
             return strtotime($b['created_at']) - strtotime($a['created_at']);
         });
         
@@ -152,6 +194,8 @@ class OrdersList extends CsvHandler {
                 return ['unpaid']; // Utilise le filtre unpaid direct
             case 'paid':
                 return ['paid'];
+            case 'to_retrieve':
+                return ['to_retrieve']; // Commandes payées en attente de récupération
             case 'temp':
                 return ['temp']; // Commandes temporaires uniquement
             case 'validated':
@@ -180,11 +224,12 @@ class OrdersList extends CsvHandler {
      * @return bool True si la ligne correspond
      */
     private function matchesFilters($data, $filters) {
-        // CSV structure: REF;Nom;Prenom;Email;Telephone;Date commande;Dossier;N de la photo;Quantite;Montant Total;Mode de paiement;Date encaissement souhaitee;Date encaissement;Date depot;Date de recuperation;Statut commande;Exported
+        // CSV structure: REF;Nom;Prenom;Email;Telephone;Date commande;Dossier;N de la photo;Quantite;Montant Total;Mode de paiement;Date encaissement souhaitee;Date encaissement;Date depot;Date de recuperation actuelle;Statut commande;Exported;Date prevue recuperation
         $paymentMode = $data[10] ?? '';      // Mode de paiement - index 10
-        $retrievalDate = $data[14] ?? '';    // Date de recuperation - index 14
+        $actualRetrievalDate = $data[14] ?? '';    // Date de recuperation actuelle - index 14
         $commandStatus = $data[15] ?? '';    // Statut commande - index 15
         $exported = $data[16] ?? '';         // Exported - index 16
+        $expectedRetrievalDate = $data[17] ?? '';  // Date prevue recuperation - index 17
         
         // Si aucun filtre, accepter tout
         if (empty($filters) || in_array('all', $filters)) {
@@ -205,6 +250,10 @@ class OrdersList extends CsvHandler {
                     break;
                 case 'paid':
                     $matches = ($commandStatus === 'paid');
+                    break;
+                case 'to_retrieve':
+                    // Commandes payées mais non encore récupérées
+                    $matches = ($commandStatus === 'paid' && empty($actualRetrievalDate));
                     break;
                 case 'prepared':
                     $matches = ($commandStatus === 'prepared');
@@ -229,7 +278,7 @@ class OrdersList extends CsvHandler {
                     $matches = (empty($exported) || $exported !== 'exported');
                     break;
                 case 'not_retrieved':
-                    $matches = (empty($retrievalDate));
+                    $matches = (empty($actualRetrievalDate));
                     break;
                 case 'all':
                     $matches = true;
@@ -337,9 +386,9 @@ class OrdersList extends CsvHandler {
                     case 'retrieved':
                         $stats['retrieved_orders']++;
                         
-                        // Compter les commandes récupérées aujourd'hui
-                        $retrievalDate = $order['retrieval_date'] ?? '';
-                        if ($retrievalDate && substr($retrievalDate, 0, 10) === $today) {
+                        // Compter les commandes récupérées aujourd'hui - utiliser la date réelle
+                        $actualRetrievalDate = $order['actual_retrieval_date'] ?? '';
+                        if ($actualRetrievalDate && substr($actualRetrievalDate, 0, 10) === $today) {
                             $stats['retrieved_today']++;
                         }
                         break;
@@ -580,7 +629,7 @@ class OrdersList extends CsvHandler {
      */
     public function countPendingRetrievals() {
         // Une commande est en attente de retrait si elle est payée mais pas encore récupérée
-        $data = $this->loadOrdersData(['paid', 'not_retrieved']);
+        $data = $this->loadOrdersData('to_retrieve');
         return count($data['orders']);
     }
     

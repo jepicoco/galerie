@@ -55,6 +55,11 @@ class Order extends CsvHandler {
         
         foreach ($csvData['data'] as $row) {
             if ($row['data'][0] === $this->reference) {
+                // S'assurer qu'on a toutes les colonnes (padding si nécessaire)
+                while (count($row['data']) < 18) {
+                    $row['data'][] = '';
+                }
+                
                 $this->data = [
                     'reference' => $row['data'][0],
                     'lastname' => $row['data'][1],
@@ -70,11 +75,20 @@ class Order extends CsvHandler {
                     'desired_payment_date' => $row['data'][11],
                     'payment_date' => $row['data'][12],
                     'deposite_payment_date' => $row['data'][13],
-                    'retrieval_date' => $row['data'][14],
+                    'actual_retrieval_date' => $row['data'][14], // Date réelle de récupération
                     'command_status' => $row['data'][15],
                     'exported' => $row['data'][16] ?? '',
+                    'expected_retrieval_date' => $row['data'][17] ?? '', // Nouvelle colonne: date prévue
                     'line_number' => $row['line_number']
                 ];
+                
+                // Compatibilité: si pas de date prévue mais date réelle, utiliser la date réelle
+                if (empty($this->data['expected_retrieval_date']) && !empty($this->data['actual_retrieval_date'])) {
+                    $this->data['expected_retrieval_date'] = $this->data['actual_retrieval_date'];
+                }
+                
+                // Pour compatibilité avec l'ancien code
+                $this->data['retrieval_date'] = $this->data['expected_retrieval_date'];
                 return true;
             }
         }
@@ -169,18 +183,38 @@ class Order extends CsvHandler {
     /**
      * Met à jour le statut de récupération
      * @param string $status Nouveau statut ('retrieved' ou 'not_retrieved')
-     * @param string $retrievalDate Date de récupération (optionnel)
+     * @param string $actualRetrievalDate Date réelle de récupération (optionnel)
      * @return array Résultat de l'opération
      */
-    public function updateRetrievalStatus($status, $retrievalDate = '') {
+    public function updateRetrievalStatus($status, $actualRetrievalDate = '') {
         if (!$this->reference) {
             return ['success' => false, 'error' => 'Référence de commande manquante'];
         }
         
-        $updates = [15 => $status];
-        if ($status === 'retrieved' && $retrievalDate) {
-            $updates[14] = $retrievalDate;
+        $updates = [15 => $status]; // Statut de commande
+        if ($status === 'retrieved' && $actualRetrievalDate) {
+            $updates[14] = $actualRetrievalDate; // Date réelle de récupération (colonne 14)
         }
+        
+        return $this->updateByValue(
+            $this->csvFile,
+            0, // Colonne de référence
+            $this->reference,
+            $updates
+        );
+    }
+    
+    /**
+     * Met à jour la date prévue de récupération
+     * @param string $expectedDate Date prévue de récupération
+     * @return array Résultat de l'opération
+     */
+    public function updateExpectedRetrievalDate($expectedDate) {
+        if (!$this->reference) {
+            return ['success' => false, 'error' => 'Référence de commande manquante'];
+        }
+        
+        $updates = [17 => $expectedDate]; // Nouvelle colonne: date prévue
         
         return $this->updateByValue(
             $this->csvFile,
