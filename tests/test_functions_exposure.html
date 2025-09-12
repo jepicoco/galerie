@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test d'exposition des fonctions JavaScript</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .warning { color: #ffc107; }
+        .function-test { margin: 5px 0; padding: 5px; background: #f8f9fa; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🔬 Test d'exposition des fonctions JavaScript</h1>
+    <p>Cette page teste si toutes les fonctions JavaScript sont correctement exposées au scope global.</p>
+
+    <div class="test-section">
+        <h2>Test admin_orders.js</h2>
+        <div id="admin-orders-results"></div>
+        <button onclick="testAdminOrdersFunctions()">Tester admin_orders.js</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test admin_paid_orders.js</h2>
+        <div id="admin-paid-orders-results"></div>
+        <button onclick="testAdminPaidOrdersFunctions()">Tester admin_paid_orders.js</button>
+    </div>
+
+    <!-- Simulation des données pour les tests -->
+    <script>
+        // Données de test pour simuler l'environnement
+        window.ordersData = [
+            {
+                reference: 'CMD123456',
+                firstname: 'Jean',
+                lastname: 'Martin',
+                email: 'jean.martin@test.com',
+                phone: '0123456789'
+            }
+        ];
+        window.ordersStats = { total: 1 };
+        window.currentOrderReference = 'CMD123456';
+    </script>
+
+    <!-- Chargement des scripts à tester -->
+    <script src="js/admin_orders.js"></script>
+    <script src="js/admin_paid_orders.js"></script>
+
+    <script>
+        function testFunction(funcName, container) {
+            const result = document.createElement('div');
+            result.className = 'function-test';
+            
+            if (typeof window[funcName] === 'function') {
+                result.innerHTML = `✅ <span class="success">${funcName}</span> - Fonction accessible`;
+                result.className += ' success';
+            } else if (typeof window[funcName] !== 'undefined') {
+                result.innerHTML = `⚠️ <span class="warning">${funcName}</span> - Existe mais n'est pas une fonction (${typeof window[funcName]})`;
+                result.className += ' warning';
+            } else {
+                result.innerHTML = `❌ <span class="error">${funcName}</span> - Fonction introuvable`;
+                result.className += ' error';
+            }
+            
+            container.appendChild(result);
+            return typeof window[funcName] === 'function';
+        }
+
+        function testAdminOrdersFunctions() {
+            const container = document.getElementById('admin-orders-results');
+            container.innerHTML = '<h3>Résultats pour admin_orders.js:</h3>';
+            
+            const functionsToTest = [
+                'showContactModal',
+                'showPaymentModal',
+                'showModal',
+                'closeModal',
+                'closeAllModals',
+                'showDetailsModal',
+                'showImagePreview',
+                'closeImagePreview',
+                'showCoherenceModal',
+                'showDownloadOptionsModal',
+                'showEmailConfirmationModal',
+                'sendOrderConfirmationEmail',
+                'printOrderSlip',
+                'copyToClipboard',
+                'generatePickingListsCSV',
+                'exportPreparationList',
+                'exportDailyPayments',
+                'checkCoherence',
+                'archiveOldOrders',
+                'exportSeparationGuide',
+                'exportPrinterSummary'
+            ];
+            
+            let successCount = 0;
+            functionsToTest.forEach(funcName => {
+                if (testFunction(funcName, container)) {
+                    successCount++;
+                }
+            });
+            
+            const summary = document.createElement('div');
+            summary.innerHTML = `<h4>Résumé: ${successCount}/${functionsToTest.length} fonctions exposées correctement</h4>`;
+            summary.style.marginTop = '15px';
+            summary.style.padding = '10px';
+            summary.style.backgroundColor = successCount === functionsToTest.length ? '#d4edda' : '#f8d7da';
+            summary.style.borderRadius = '5px';
+            container.appendChild(summary);
+        }
+
+        function testAdminPaidOrdersFunctions() {
+            const container = document.getElementById('admin-paid-orders-results');
+            container.innerHTML = '<h3>Résultats pour admin_paid_orders.js:</h3>';
+            
+            const functionsToTest = [
+                'showRetrievedModal',
+                'confirmOrderRetrieved',
+                'openModal',
+                'closeModal', 
+                'showContactModal',
+                'showDetailsModal',
+                'showEmailConfirmationModal',
+                'sendOrderConfirmationEmail',
+                'copyToClipboard',
+                'showImagePreview',
+                'closeImagePreview',
+                'printOrderSlip',
+                'applyOrdersFilter',
+                'clearSearch'
+            ];
+            
+            let successCount = 0;
+            functionsToTest.forEach(funcName => {
+                if (testFunction(funcName, container)) {
+                    successCount++;
+                }
+            });
+            
+            const summary = document.createElement('div');
+            summary.innerHTML = `<h4>Résumé: ${successCount}/${functionsToTest.length} fonctions exposées correctement</h4>`;
+            summary.style.marginTop = '15px';
+            summary.style.padding = '10px';
+            summary.style.backgroundColor = successCount === functionsToTest.length ? '#d4edda' : '#f8d7da';
+            summary.style.borderRadius = '5px';
+            container.appendChild(summary);
+        }
+
+        // Test automatique au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                console.log('🔄 Lancement des tests automatiques...');
+                testAdminOrdersFunctions();
+                testAdminPaidOrdersFunctions();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

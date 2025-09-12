@@ -1,28 +1,27 @@
-# Configuration et données sensibles
-config.php
+# ================================
+# GALERIE PHOTOS GALA - GITIGNORE
+# ================================
+
+# ⚠️  DONNÉES SENSIBLES CRITIQUES ⚠️
+# Ces fichiers contiennent des données clients et doivent être protégés
+commandes/
+commandes/**
+logs/
+logs/**
 *.log
 
-# Données utilisateur
+# Configuration et données sensibles
+config.php
+.env
+.env.*
+
+# Données utilisateur (structure préservée avec .gitkeep)
 data/*.json
-photos/*
+data/**/*.json
 !data/.gitkeep
+!data/**/.gitkeep
 
-# Commandes et exports
-commandes/*.json
-commandes/*.csv
-commandes/temp/*.json
-exports/*
-!exports/.gitkeep
-
-# Logs
-logs/*.log
-!logs/.gitkeep
-
-# Archives et sauvegardes
-archives/*
-!archives/.gitkeep
-
-# Photos utilisateur (garder la structure)
+# Photos utilisateur (garder la structure uniquement)
 photos/*/
 !photos/cache/
 photos/cache/thumbnails/*
@@ -30,42 +29,89 @@ photos/cache/resized/*
 !photos/cache/thumbnails/.gitkeep
 !photos/cache/resized/.gitkeep
 
-# Fichiers de test et développement
+# Exports et rapports (contiennent potentiellement des données clients)
+exports/*
+exports/**
+!exports/.gitkeep
+
+# Archives et sauvegardes
+archives/
+archives/**
+!archives/.gitkeep
+
+# ===================================
+# OUTILS DE DÉVELOPPEMENT À IGNORER
+# ===================================
+
+# Claude Code et outils IA
+.claude/
+.claude/**
+
+# Scripts de développement et tests
+fix_*.php
+validate_*.php
+manual_*.php
+migrate_*.php
 test_*.php
 analyse_*.php
 rapport_*.php
 nettoyage_*.php
 debug.*
+*_test.php
+*_debug.php
 
-# Fichiers historiques et sauvegardes
-historique/
-250726_*
-final_summary.md
-production_guide.md
-config_readme.md
-CLAUDE.md
+# Rapports et analyses temporaires
+*TEST_REPORT*.md
+*ANALYSIS*.md
+manual_url_test_analysis.php
 
-# Fichiers obsolètes à nettoyer
-logger.php
-orders_helpers.php
-update_csv.php
+# Fichiers de développement temporaires
+*_old.php
+*_backup.php
+*_temp.php
+email_handler_old.php
 
-# Fichiers de cache et temporaires
-cache/
-includes/
-templates/
+# ============================
+# FICHIERS SYSTÈME ET CACHE
+# ============================
 
 # Fichiers temporaires
 *.tmp
 *.temp
 *.bak
 *.backup
+*.swp
+*~
 
-# Dossiers vendor/node_modules
+# Cache et fichiers générés
+cache/
+includes/
+templates/
+*.cache
+
+# Sessions PHP
+sess_*
+php_session_*
+
+# =====================
+# ENVIRONNEMENT DE DEV
+# =====================
+
+# Dependencies
 vendor/
 node_modules/
+composer.lock
+package-lock.json
 
-# Fichiers système
+# IDE et éditeurs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+
+# OS et système
 .DS_Store
 .DS_Store?
 ._*
@@ -73,20 +119,47 @@ node_modules/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# IDE
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
+# ============================
+# HISTORIQUE ET DOCUMENTATION
+# ============================
 
-# Fichiers de cache PHP
-*.cache
+# Documentation historique (garder seulement la documentation active)
+historique/
+250726_*
+final_summary.md
+production_guide.md
+config_readme.md
 
-# Fichiers de session PHP
-sess_*
+# IMPORTANT: Ne pas ignorer CLAUDE.md - c'est la doc du projet
+# CLAUDE.md était incorrectement ignoré précédemment
 
-# Variables d'environnement
-.env
-.env.local
-.env.production
+# Fichiers obsolètes identifiés
+logger.php
+orders_helpers.php
+update_csv.php
+
+
+# =============================================
+# NOTES IMPORTANTES POUR LES DÉVELOPPEURS
+# =============================================
+# 
+# 1. DONNÉES SENSIBLES:
+#    - commandes/ contient des données clients (noms, emails, téléphones)
+#    - logs/ peut contenir des informations sensibles
+#    - Ces dossiers ne doivent JAMAIS être commités
+# 
+# 2. STRUCTURE PRÉSERVÉE:
+#    - Les .gitkeep permettent de garder la structure des dossiers
+#    - Ne pas supprimer les fichiers .gitkeep
+# 
+# 3. DOCUMENTATION:
+#    - CLAUDE.md est la documentation du projet (ne pas ignorer)
+#    - documentation/ contient la doc technique (à inclure)
+# 
+# 4. EN CAS DE DOUTE:
+#    - Toujours vérifier avant de commiter des nouveaux fichiers
+#    - Utiliser 'git status' et 'git diff --cached' avant commit
+#    - Privilégier l'exclusion si un fichier peut contenir des données sensibles
+# =============================================

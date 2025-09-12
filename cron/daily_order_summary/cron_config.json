@@ -1,0 +1,27 @@
+{
+  "email_settings": {
+    "subject": "Récapitulatif quotidien des commandes - Gala 2025",
+    "from_name": "Système Gala 2025",
+    "send_hour": "00",
+    "send_minute": "30",
+    "timezone": "Europe/Paris"
+  },
+  "report_settings": {
+    "include_order_details": true,
+    "include_statistics": true,
+    "max_orders_in_detail": 50,
+    "currency_symbol": "€"
+  },
+  "system_settings": {
+    "log_level": "info",
+    "retry_failed_emails": true,
+    "max_retry_attempts": 3,
+    "retry_delay_minutes": 5
+  },
+  "paths": {
+    "email_recipients_file": "../../data/email_recipients.json",
+    "orders_directory": "../../commandes/",
+    "logs_directory": "../../logs/",
+    "template_file": "./email_template.php"
+  }
+}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>DEBUG - Fonctions JavaScript</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .test { padding: 10px; margin: 5px; background: #f0f0f0; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔧 DEBUG - Test des fonctions JavaScript</h1>
+    
+    <h2>Test admin_paid_orders.js</h2>
+    <div id="paid-results"></div>
+    
+    <h2>Test admin_orders.js</h2>
+    <div id="orders-results"></div>
+    
+    <!-- Charger les scripts -->
+    <script>
+        // Simuler les données globales
+        window.ordersData = [];
+        window.currentOrderReference = null;
+    </script>
+    
+    <script src="js/admin_paid_orders.js"></script>
+    <script src="js/admin_orders.js"></script>
+    
+    <script>
+        function addResult(container, funcName, success) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (success ? 'success' : 'error');
+            div.textContent = (success ? '✅' : '❌') + ' ' + funcName + ' - ' + (success ? 'OK' : 'MANQUANTE');
+            container.appendChild(div);
+        }
+        
+        // Test admin_paid_orders.js functions
+        const paidContainer = document.getElementById('paid-results');
+        const paidFunctions = [
+            'showRetrievedModal',
+            'confirmOrderRetrieved',
+            'showContactModal',
+            'showDetailsModal',
+            'showEmailConfirmationModal',
+            'printOrderSlip',
+            'copyToClipboard',
+            'openModal',
+            'closeModal'
+        ];
+        
+        paidFunctions.forEach(func => {
+            addResult(paidContainer, func, typeof window[func] === 'function');
+        });
+        
+        // Test admin_orders.js functions  
+        const ordersContainer = document.getElementById('orders-results');
+        const ordersFunctions = [
+            'showPaymentModal',
+            'showContactModal',
+            'showDetailsModal',
+            'showEmailConfirmationModal',
+            'printOrderSlip',
+            'copyToClipboard',
+            'exportSeparationGuide',
+            'exportPrinterSummary',
+            'closeModal'
+        ];
+        
+        ordersFunctions.forEach(func => {
+            addResult(ordersContainer, func, typeof window[func] === 'function');
+        });
+        
+        // Test direct en console
+        console.log('=== TEST DIRECT DES FONCTIONS ===');
+        console.log('showRetrievedModal:', typeof window.showRetrievedModal);
+        console.log('showPaymentModal:', typeof window.showPaymentModal);
+        console.log('showContactModal:', typeof window.showContactModal);
+        console.log('closeModal:', typeof window.closeModal);
+    </script>
+</body>
+</html>
