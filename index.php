@@ -368,7 +368,7 @@ $sortedActivities = array_merge($featuredActivities, $normalActivities);
                     
                     <div class="activity-image">
                         <?php if (!empty($activity_photos)): ?>
-                            <img src="<?php echo GetImageUrl(htmlspecialchars($activity_key) . '/' . htmlspecialchars($activity_photos[0]),IMG_THUMBNAIL); ?>" 
+                            <img src="<?php echo GetImageUrl($activity_key . '/' . $activity_photos[0], IMG_THUMBNAIL); ?>" 
                                 alt="<?php echo $activity_name; ?>"
                                 loading="lazy">
                         <?php else: ?>

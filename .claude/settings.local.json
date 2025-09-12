@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(find:*)",
+      "Bash(php:*)",
+      "Bash(\"/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe\" --version)",
+      "Read(//192.168.10.13/WWW/gala/**)",
+      "Bash(\"/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe\" test_csv_creation.php)",
+      "Bash(\"/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe\" test_export_validated.php)",
+      "Bash(sed:*)",
+      "Bash(\"/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe\" test_filtering.php)",
+      "Bash(\"/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe\" test_retrieval_unification.php)",
+      "Bash(\"/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe\" test_orders_list.php)",
+      "Read(///**)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(node:*)",
+      "Bash(/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe test_search_filter.php)",
+      "Bash(git commit:*)",
+      "Bash(grep:*)",
+      "Bash(rm:*)",
+      "Bash(/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe -m)",
+      "Bash(git log:*)",
+      "WebFetch(domain:192.168.10.13)",
+      "Bash(dir:*)",
+      "Bash(/d/laragon2/bin/php/php-7.1.1-Win32-VC14-x86/php.exe run_summary.php)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
