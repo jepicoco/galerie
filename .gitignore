@@ -47,18 +47,21 @@ archives/**
 .claude/
 .claude/**
 
-# Scripts de développement et tests
+# Scripts de développement et tests (racine seulement - pas dans /tests/)
 fix_*.php
 validate_*.php
 manual_*.php
 migrate_*.php
-test_*.php
+/test_*.php
 analyse_*.php
 rapport_*.php
 nettoyage_*.php
 debug.*
-*_test.php
-*_debug.php
+/*_test.php
+/*_debug.php
+
+# Tests directory is included but root-level test files are ignored
+!tests/
 
 # Rapports et analyses temporaires
 *TEST_REPORT*.md
