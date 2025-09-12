@@ -210,24 +210,7 @@ function clearAllFilters() {
     updateActiveFiltersSummary();
 }
  
-function openEditModal(activityKey) {
-    const modal = document.getElementById('editModal');
-    const activity = activities[activityKey];
-    
-    if (activity) {
-        // Remplir le formulaire avec les données
-        document.getElementById('edit_activity_key').value = activityKey;
-        document.getElementById('edit_activity_name').value = activity.name;
-        document.getElementById('edit_activity_description').value = activity.description || '';
-        document.getElementById('edit_activity_tags').value = activity.tags.join(', ');
-        document.getElementById('edit_activity_visibility').value = activity.visibility;
-        document.getElementById('edit_activity_featured').checked = activity.featured;
-        
-        // Afficher la modal
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-}
+// This function is replaced by the improved version below to handle tag management properly
 
 function closeEditModal() {
     const modal = document.getElementById('editModal');
@@ -375,9 +358,13 @@ function filterActivitiesAlt() {
 
 // Initialiser les nuages de tags
 function initializeTagsClouds() {
+    // Utiliser une variable locale pour éviter les conflits
+    if (typeof allTags === 'undefined') {
+        window.allTags = new Set();
+    }
     // Collecter tous les tags des activités
     document.querySelectorAll('.activity-card .tag').forEach(tagElement => {
-        allTags.add(tagElement.textContent.trim());
+        window.allTags.add(tagElement.textContent.trim());
     });
     
     renderSearchTagsCloud();
@@ -395,7 +382,7 @@ function renderSearchTagsCloud() {
     
     container.innerHTML = '';
     
-    Array.from(allTags).sort().forEach(tag => {
+    Array.from(window.allTags || new Set()).sort().forEach(tag => {
         const tagElement = document.createElement('span');
         tagElement.className = `tag-filter ${selectedTagsForFilter.has(tag) ? 'active' : ''}`;
         tagElement.textContent = tag;
@@ -418,7 +405,7 @@ function renderModalTagsCloud() {
     const container = document.getElementById('modal-tags-cloud');
     container.innerHTML = '';
     
-    Array.from(allTags).sort().forEach(tag => {
+    Array.from(window.allTags || new Set()).sort().forEach(tag => {
         const tagElement = document.createElement('span');
         tagElement.className = 'tag-filter small';
         tagElement.textContent = tag;
@@ -565,40 +552,62 @@ document.getElementById('edit_activity_tags_input').addEventListener('keypress',
         const tag = this.value.trim();
         if (tag && !selectedTagsForActivity.has(tag)) {
             addTagToActivity(tag);
-            allTags.add(tag); // Ajouter à la liste globale
+            window.allTags.add(tag); // Ajouter à la liste globale
             renderModalTagsCloud(); // Mettre à jour le nuage
         }
         this.value = '';
     }
 });
 
-// Modifier la fonction openEditModal
+// Enhanced function openEditModal with proper error handling and tag management
 function openEditModal(activityKey) {
+    console.log('Opening edit modal for:', activityKey); // Debug log
     const modal = document.getElementById('editModal');
+    
+    // Check if activities is defined and has the key
+    if (typeof activities === 'undefined') {
+        console.error('Activities data not loaded');
+        return;
+    }
+    
     const activity = activities[activityKey];
     
-    if (activity) {
-        // Réinitialiser les tags sélectionnés
+    if (!activity) {
+        console.error('Activity not found:', activityKey);
+        return;
+    }
+    
+    try {
+        // Reset selected tags for activity
         selectedTagsForActivity.clear();
-        activity.tags.forEach(tag => selectedTagsForActivity.add(tag));
-        
-        // Remplir le formulaire
-        document.getElementById('edit_activity_key').value = activityKey;
-        document.getElementById('edit_activity_name').value = activity.name;
-        document.getElementById('edit_activity_description').value = activity.description || '';
-        document.getElementById('edit_activity_visibility').value = activity.visibility;
-        document.getElementById('edit_activity_featured').checked = activity.featured;
-        const pricingSelect = document.getElementById('edit_activity_pricing_type');
-        if (pricingSelect) {
-            pricingSelect.value = activity.pricing_type || 'PHOTO'; // Valeur par défaut
+        if (activity.tags && Array.isArray(activity.tags)) {
+            activity.tags.forEach(tag => selectedTagsForActivity.add(tag));
         }
         
-        // Afficher les tags
+        // Fill the form with activity data
+        document.getElementById('edit_activity_key').value = activityKey;
+        document.getElementById('edit_activity_name').value = activity.name || '';
+        document.getElementById('edit_activity_description').value = activity.description || '';
+        document.getElementById('edit_activity_visibility').value = activity.visibility || 'public';
+        document.getElementById('edit_activity_featured').checked = activity.featured || false;
+        
+        // Handle pricing type selection
+        const pricingSelect = document.getElementById('edit_activity_pricing_type');
+        if (pricingSelect) {
+            pricingSelect.value = activity.pricing_type || 'PHOTO';
+        }
+        
+        // Display tags
         renderSelectedTags();
         updateHiddenTagsInput();
         
+        // Show modal
         modal.classList.add('show');
         document.body.style.overflow = 'hidden';
+        
+        console.log('Modal opened successfully for:', activityKey);
+    } catch (error) {
+        console.error('Error opening modal:', error);
     }
 }
 

@@ -377,7 +377,9 @@ $stats['total_tags'] = count(array_unique($allTags));
                 <?php else: ?>
                     <div class="activities-grid">
                         <?php foreach ($activities as $activityKey => $activity): ?>
-                            <div class="activity-card <?php echo (empty($activity['tags']) || count($activity['tags']) == 0) ? 'no-tags-card' : ''; ?>" onclick="openEditModal('<?php echo htmlspecialchars($activityKey); ?>')">
+                            <div class="activity-card <?php echo (empty($activity['tags']) || count($activity['tags']) == 0) ? 'no-tags-card' : ''; ?>" 
+                                 data-activity-key="<?php echo htmlspecialchars($activityKey, ENT_QUOTES, 'UTF-8'); ?>" 
+                                 style="cursor: pointer;">
                                 <!-- Icône d'édition -->
                                 <div class="edit-icon" title="Modifier l'activité">✏️</div>
                                 <div class="activity-card-header">
@@ -420,7 +422,32 @@ $stats['total_tags'] = count(array_unique($allTags));
         </div>
     </main>
     <script>
-        // Recherche et filtres
+        // Initialize activities data for JavaScript
+        window.activities = <?php echo json_encode($activities, JSON_HEX_QUOT | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_TAG); ?>;
+        
+        // Initialize watermark config for script.js
+        window.watermarkConfig = {
+            enabled: <?php echo json_encode(defined('WATERMARK_ENABLED') ? WATERMARK_ENABLED : false); ?>,
+            text: <?php echo json_encode(defined('WATERMARK_TEXT') ? WATERMARK_TEXT : ''); ?>,
+            opacity: <?php echo json_encode(defined('WATERMARK_OPACITY') ? WATERMARK_OPACITY : 0.3); ?>,
+            color: <?php echo json_encode(defined('WATERMARK_COLOR') ? WATERMARK_COLOR : '#ffffff'); ?>,
+            size: <?php echo json_encode(defined('WATERMARK_SIZE') ? WATERMARK_SIZE : '16px'); ?>
+        };
+        
+        // Add click event listeners to activity cards
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize click handlers for activity cards
+            document.querySelectorAll('.activity-card[data-activity-key]').forEach(card => {
+                card.addEventListener('click', function() {
+                    const activityKey = this.getAttribute('data-activity-key');
+                    if (activityKey && activities[activityKey]) {
+                        openEditModal(activityKey);
+                    }
+                });
+            });
+        });
+        
+        // Legacy variables for compatibility
         const searchInput = document.getElementById('search-activities');
         const visibilityFilter = document.getElementById('filter-visibility');
         const featuredFilter = document.getElementById('filter-featured');
