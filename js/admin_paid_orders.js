@@ -15,13 +15,13 @@ function showRetrievedModal(reference) {
         return;
     }
     
-    document.getElementById('retrieved-order-reference').textContent = reference;
+    document.getElementById('retrieved-reference').textContent = reference;
     document.getElementById('retrieved-customer-name').textContent = order.firstname + ' ' + order.lastname;
     
     // Stocker la référence pour la confirmation
     document.getElementById('retrievedModal').dataset.reference = reference;
     
-    openModal('retrievedModal');
+    showModal('retrievedModal');
 }
 
 /**

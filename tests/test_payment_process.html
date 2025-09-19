@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Processus de Paiement</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test du Processus de Paiement et Rafraîchissement</h1>
+
+    <div>
+        <button class="test-button" onclick="testGlobalFunctions()">
+            1. Tester les fonctions globales
+        </button>
+
+        <button class="test-button" onclick="testSwitchTab()">
+            2. Tester switchTab directement
+        </button>
+
+        <button class="test-button" onclick="simulatePayment()">
+            3. Simuler un paiement complet
+        </button>
+
+        <button class="test-button" onclick="clearLog()">
+            Effacer les logs
+        </button>
+    </div>
+
+    <div id="log" class="log">Les résultats des tests apparaîtront ici...</div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = 'Logs effacés...\n';
+        }
+
+        function testGlobalFunctions() {
+            log('=== Test des fonctions globales ===');
+            log('typeof window.switchTab: ' + typeof window.switchTab);
+            log('typeof processPayment: ' + typeof processPayment);
+            log('window.currentStatus: ' + window.currentStatus);
+            log('typeof window.currentStatus: ' + typeof window.currentStatus);
+        }
+
+        function testSwitchTab() {
+            log('=== Test direct de switchTab ===');
+            if (typeof window.switchTab === 'function') {
+                log('Appel de switchTab avec status "unpaid"...');
+                window.switchTab('unpaid');
+            } else {
+                log('ERREUR: switchTab non disponible');
+            }
+        }
+
+        function simulatePayment() {
+            log('=== Simulation complète du paiement ===');
+            log('🎉 Simulation: Paiement traité avec succès');
+
+            // Logique exacte copiée depuis admin_orders.js
+            log('⏱️ Démarrage du timeout de 500ms...');
+            setTimeout(() => {
+                log('🔄 Timeout écoulé, vérification de switchTab...');
+                log('typeof window.switchTab: ' + typeof window.switchTab);
+                log('window.currentStatus: ' + window.currentStatus);
+
+                if (typeof window.switchTab === 'function') {
+                    log('✅ switchTab trouvée, appel avec status: ' + (window.currentStatus || 'unpaid'));
+                    window.switchTab(window.currentStatus || 'unpaid');
+                } else {
+                    log('❌ switchTab non trouvée, rechargement de page nécessaire');
+                    log('Rechargement de page en cours...');
+                    // window.location.reload(); // Commenté pour le test
+                }
+            }, 500);
+        }
+
+        // Log initial
+        log('Page de test chargée. Ouvrir la console pour plus de détails.');
+    </script>
+</body>
+</html>

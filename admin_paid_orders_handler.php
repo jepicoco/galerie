@@ -5,15 +5,13 @@
  */
 
 if (!defined('GALLERY_ACCESS')) {
-    die('Accès direct interdit');
+    define('GALLERY_ACCESS', true);
 }
 
-require_once 'config.php';
-
 try {
+    require_once 'config.php';
     require_once 'functions.php';
-    require_once 'email_handler.php';
-
+    require_once 'classes/orders.list.class.php';
 } catch (Exception $e) {
     // Nettoyer la sortie et retourner une erreur JSON
     ob_clean();
@@ -22,31 +20,165 @@ try {
     exit;
 }
 
-// Initialiser le logger si non défini
-if (!isset($logger)) {
-    // Exemple d'initialisation simple, à adapter selon votre application
-    class SimpleLogger {
-        public function adminAction($action, $data = []) {
-            // Vous pouvez écrire dans un fichier ou simplement ignorer pour éviter l'erreur
-            // file_put_contents('admin_actions.log', date('Y-m-d H:i:s') . " $action: " . json_encode($data) . "\n", FILE_APPEND);
-        }
-    }
-    $logger = new SimpleLogger();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-// Traitement des actions AJAX
+$action = $_GET['action'] ?? '';
+
+// Vérifier l'authentification admin seulement pour les appels AJAX
+if (!empty($action)) {
+    if (!is_admin()) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Accès non autorisé']);
+        exit;
+    }
+}
+
+if ($action === 'get_orders') {
+    $status = $_GET['status'] ?? 'all_paid';
+    $search = $_GET['search'] ?? '';
+
+    $ordersList = new OrdersList();
+
+    // Charger les données selon le statut
+    switch ($status) {
+        case 'to_retrieve':
+            $data = $ordersList->loadOrdersData('to_retrieve');
+            break;
+        case 'retrieved':
+            $data = $ordersList->loadOrdersData('retrieved');
+            break;
+        case 'all_paid':
+        default:
+            // Charger toutes les commandes payées (à retirer + retirées)
+            $toRetrieveData = $ordersList->loadOrdersData('to_retrieve');
+            $retrievedData = $ordersList->loadOrdersData('retrieved');
+
+            // Fusionner les deux tableaux
+            $allOrders = array_merge($toRetrieveData['orders'], $retrievedData['orders']);
+
+            $data = ['orders' => $allOrders];
+            break;
+    }
+
+    $orders = $data['orders'];
+
+    // Appliquer le filtre de recherche si nécessaire
+    if (!empty($search)) {
+        $orders = array_filter($orders, function($order) use ($search) {
+            $searchLower = strtolower($search);
+            return strpos(strtolower($order['reference']), $searchLower) !== false ||
+                   strpos(strtolower($order['lastname']), $searchLower) !== false;
+        });
+    }
+
+    // Calculer les statistiques
+    $stats = $ordersList->calculateStats($orders);
+
+    // Calculer les tabStats corrects
+    $toRetrieveCount = count($ordersList->loadOrdersData('to_retrieve')['orders']);
+    $retrievedCount = count($ordersList->loadOrdersData('retrieved')['orders']);
+    $allPaidCount = $toRetrieveCount + $retrievedCount;
+
+    // Préparer la réponse
+    $response = [
+        'success' => true,
+        'orders' => array_values($orders),
+        'stats' => $stats,
+        'tabStats' => [
+            'to_retrieve' => ['count' => $toRetrieveCount],
+            'retrieved' => ['count' => $retrievedCount],
+            'all_paid' => ['count' => $allPaidCount]
+        ],
+        'total_count' => count($orders)
+    ];
+
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
+
+if ($action === 'get_stats') {
+    $ordersList = new OrdersList();
+
+    // Calculer les statistiques pour chaque onglet
+    $toRetrieveData = $ordersList->loadOrdersData('to_retrieve');
+    $retrievedData = $ordersList->loadOrdersData('retrieved');
+    // Pour all_paid, fusionner les commandes à retirer et retirées
+    $allPaidOrders = array_merge($toRetrieveData['orders'], $retrievedData['orders']);
+
+    $toRetrieveStats = $ordersList->calculateStats($toRetrieveData['orders']);
+    $retrievedStats = $ordersList->calculateStats($retrievedData['orders']);
+    $allPaidStats = $ordersList->calculateStats($allPaidOrders);
+
+    $response = [
+        'to_retrieve' => [
+            'count' => count($toRetrieveData['orders']),
+            'stats' => $toRetrieveStats
+        ],
+        'retrieved' => [
+            'count' => count($retrievedData['orders']),
+            'stats' => $retrievedStats
+        ],
+        'all_paid' => [
+            'count' => count($allPaidOrders),
+            'stats' => $allPaidStats
+        ]
+    ];
+
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
+
+// Traitement des actions POST existantes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     switch ($_POST['action']) {
         case 'mark_as_retrieved':
             if (!isset($_POST['reference'])) {
+                header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'message' => 'Référence manquante']);
                 exit;
             }
-            
-            $result = markOrderAsRetrieved($_POST['reference']);
-            echo json_encode($result);
+
+            try {
+                $ordersList = new OrdersList();
+                $result = $ordersList->markOrderAsRetrieved($_POST['reference']);
+
+                // Log pour debug
+                error_log("Handler markOrderAsRetrieved: " . $_POST['reference'] . " - " . json_encode($result));
+
+                header('Content-Type: application/json');
+                echo json_encode($result);
+                exit;
+            } catch (Exception $e) {
+                error_log("Handler ERROR markOrderAsRetrieved: " . $_POST['reference'] . " - " . $e->getMessage());
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Erreur serveur: ' . $e->getMessage()]);
+                exit;
+            }
+
+        case 'get_contact':
+            if (!isset($_POST['reference'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Référence manquante']);
+                exit;
+            }
+
+            $ordersList = new OrdersList();
+            $contact = $ordersList->getOrderContact($_POST['reference']);
+            header('Content-Type: application/json');
+            echo json_encode($contact);
             exit;
     }
+}
+
+if (!empty($action)) {
+    http_response_code(400);
+    echo 'Action non reconnue';
+    exit;
 }
 
 /**

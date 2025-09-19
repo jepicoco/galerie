@@ -39,12 +39,14 @@ header {
     color: white;
     padding: 1rem 0;
     box-shadow: var(--shadow);
+    overflow: visible;
 }
 
 header .container {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    overflow: visible;
 }
 
 header h1 {
@@ -69,6 +71,7 @@ nav {
     display: flex;
     gap: 1rem;
     align-items: center;
+    overflow: visible;
 }
 
 /* Boutons */
@@ -2428,4 +2431,122 @@ img {
 /* Assurer que le scroll est fluide */
 .cart-items {
     scroll-behavior: smooth;
+}
+
+/* =====================================================
+   BADGES DE NOTIFICATION POUR LES BOUTONS ADMIN
+   ===================================================== */
+
+/* Conteneur pour bouton avec badge */
+.btn-with-badge {
+    position: relative;
+    overflow: visible;
+}
+
+/* Style du badge de notification */
+.notification-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: var(--accent-color);
+    color: white;
+    border-radius: 50%;
+    min-width: 20px;
+    height: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 6px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 9999;
+    animation: badgePulse 2s infinite;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+/* Badge spécifique pour les commandes */
+.notification-badge.orders {
+    background: #dc3545; /* Rouge pour urgence */
+}
+
+/* Badge spécifique pour les retraits */
+.notification-badge.pickup {
+    background: #28a745; /* Vert pour prêt */
+}
+
+/* Badge pour nouvelles commandes */
+.notification-badge.new {
+    background: #ffc107; /* Jaune pour nouveau */
+    color: #333;
+}
+
+/* Animation de pulsation pour les badges */
+@keyframes badgePulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+}
+
+/* Badge clignotant pour notifications critiques */
+.notification-badge.urgent {
+    animation: badgeBlink 1s infinite;
+}
+
+@keyframes badgeBlink {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+
+/* Responsive pour les badges */
+@media (max-width: 768px) {
+    .notification-badge {
+        top: -8px;
+        right: -8px;
+        min-width: 18px;
+        height: 18px;
+        font-size: 10px;
+        padding: 1px 4px;
+        z-index: 9999;
+    }
+}
+
+/* Hover effect pour les boutons avec badges */
+.btn-with-badge:hover .notification-badge {
+    transform: scale(1.15);
+    transition: transform 0.2s ease;
+}
+
+/* Badge masqué par défaut */
+.notification-badge[style*="display: none"] {
+    display: none !important;
+}
+
+/* Badge visible */
+.notification-badge.show {
+    display: flex !important;
+    animation: badgeAppear 0.3s ease;
+}
+
+@keyframes badgeAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }

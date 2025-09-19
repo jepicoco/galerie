@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Payment Refresh</title>
+</head>
+<body>
+    <h1>Test de Rafraîchissement après Paiement</h1>
+
+    <script>
+        // Simuler les variables globales comme dans admin_orders.php
+        window.currentStatus = 'unpaid';
+
+        // Simuler la fonction switchTab
+        window.switchTab = function(status) {
+            console.log('switchTab appelée avec status:', status);
+            window.currentStatus = status;
+            return Promise.resolve();
+        };
+
+        // Test de la logique de rafraîchissement (copiée depuis admin_orders.js)
+        function testPaymentRefresh() {
+            console.log('=== Test du rafraîchissement après paiement ===');
+            console.log('Statut actuel:', window.currentStatus);
+
+            // Simuler un paiement réussi
+            setTimeout(() => {
+                console.log('Simulating payment success...');
+
+                if (typeof window.switchTab === 'function') {
+                    console.log('switchTab trouvée, appel avec:', window.currentStatus);
+                    window.switchTab(window.currentStatus || 'unpaid');
+                } else {
+                    console.log('switchTab non trouvée, rechargement de page nécessaire');
+                }
+            }, 500);
+        }
+
+        // Lancer le test
+        testPaymentRefresh();
+
+        // Test manuel
+        function testManual() {
+            console.log('\n=== Test manuel ===');
+            window.currentStatus = 'paid';
+            setTimeout(() => {
+                if (typeof window.switchTab === 'function') {
+                    console.log('Appel manuel de switchTab avec:', window.currentStatus);
+                    window.switchTab(window.currentStatus);
+                }
+            }, 100);
+        }
+
+        setTimeout(testManual, 2000);
+    </script>
+
+    <p>Ouvrez la console pour voir les résultats du test.</p>
+    <p>Ce test simule le processus de rafraîchissement automatique après un paiement.</p>
+</body>
+</html>

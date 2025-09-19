@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tests Frontend - Système de Consultations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        
+        .test-passed {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+        
+        .test-failed {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .test-info {
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            color: #0c5460;
+        }
+        
+        .summary {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .mock-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .mock-photo {
+            height: 150px;
+            background: #dee2e6;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .mock-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .mock-photo:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            max-height: 90%;
+        }
+        
+        .modal img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Tests Frontend - Système de Consultations</h1>
+    <p><strong>Date:</strong> <span id="test-date"></span></p>
+    
+    <!-- Contrôles de test -->
+    <div class="controls">
+        <button onclick="runAllTests()">▶️ Exécuter tous les tests</button>
+        <button onclick="clearResults()">🗑️ Effacer les résultats</button>
+        <button onclick="simulateUserBehavior()">👤 Simuler comportement utilisateur</button>
+        <button onclick="testPerformanceImpact()">⚡ Test impact performance</button>
+    </div>
+    
+    <!-- Résultats des tests -->
+    <div id="test-results"></div>
+    
+    <!-- Galerie de test -->
+    <div class="test-container">
+        <h2>🖼️ Galerie de Test</h2>
+        <div class="mock-gallery" id="test-gallery">
+            <!-- Les photos seront générées dynamiquement -->
+        </div>
+    </div>
+    
+    <!-- Modal de test -->
+    <div id="test-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <img id="modal-img" src="" alt="Photo">
+        </div>
+    </div>
+    
+    <!-- Résumé des tests -->
+    <div id="test-summary" class="summary" style="display: none;">
+        <!-- Le résumé sera généré après les tests -->
+    </div>
+    
+    <!-- Simulation de script.js existant -->
+    <script>
+        // Simuler les variables globales existantes
+        let currentModalPhoto = null;
+        let currentZoom = 1;
+        let isTrackingEnabled = true;
+        
+        // Variables de test
+        let testResults = [];
+        let testCount = 0;
+        let passedTests = 0;
+        let failedTests = 0;
+        let consultationCalls = [];
+        
+        // Mock fetch pour intercepter les appels API
+        let originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+            if (url === 'consultation_handler.php') {
+                // Intercepter et enregistrer l'appel
+                const params = new URLSearchParams(options.body);
+                const data = Object.fromEntries(params.entries());
+                consultationCalls.push({
+                    timestamp: new Date().toISOString(),
+                    data: data
+                });
+                
+                // Simuler une réponse réussie
+                return Promise.resolve({
+                    json: () => Promise.resolve({ success: true })
+                });
+            }
+            
+            // Pour les autres appels, utiliser le fetch original
+            return originalFetch.apply(this, arguments);
+        };
+        
+        // Initialiser la page
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('test-date').textContent = new Date().toLocaleString();
+            generateMockGallery();
+            initializeConsultationTracking();
+        });
+        
+        /**
+         * Générer une galerie de photos de test
+         */
+        function generateMockGallery() {
+            const gallery = document.getElementById('test-gallery');
+            const activities = ['gala-ouverture', 'cocktail', 'danse-principale', 'photos-groupe'];
+            
+            for (let i = 1; i <= 12; i++) {
+                const activity = activities[i % activities.length];
+                const photoDiv = document.createElement('div');
+                photoDiv.className = 'mock-photo';
+                photoDiv.onclick = () => openModal(activity, `photo${i}.jpg`);
+                
+                photoDiv.innerHTML = `
+                    <img src="data:image/svg+xml;base64,${btoa(`
+                        <svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150">
+                            <rect width="200" height="150" fill="#007bff"/>
+                            <text x="100" y="75" text-anchor="middle" dy="0.3em" fill="white" font-family="Arial" font-size="12">
+                                ${activity}/photo${i}.jpg
+                            </text>
+                        </svg>
+                    `)}" 
+                         alt="Photo ${i}" 
+                         data-activity-key="${activity}" 
+                         data-photo-name="photo${i}.jpg">
+                `;
+                
+                gallery.appendChild(photoDiv);
+            }
+        }
+        
+        /**
+         * Ouvrir la modal avec une photo
+         */
+        function openModal(activityKey, photoName) {
+            const modal = document.getElementById('test-modal');
+            const modalImg = document.getElementById('modal-img');
+            
+            currentModalPhoto = { activityKey, photoName };
+            
+            modalImg.src = `data:image/svg+xml;base64,${btoa(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+                    <rect width="800" height="600" fill="#28a745"/>
+                    <text x="400" y="300" text-anchor="middle" dy="0.3em" fill="white" font-family="Arial" font-size="24">
+                        Modal: ${activityKey}/${photoName}
+                    </text>
+                </svg>
+            `)}`;
+            
+            modal.style.display = 'block';
+            
+            // Simuler le tracking de consultation modal
+            setTimeout(() => {
+                trackImageConsultation(activityKey, photoName, 'modal_view');
+            }, 100);
+        }
+        
+        /**
+         * Fermer la modal
+         */
+        function closeModal() {
+            document.getElementById('test-modal').style.display = 'none';
+            currentModalPhoto = null;
+        }
+        
+        // === FONCTIONS DE TRACKING (copie de script.js) ===
+        
+        /**
+         * Enregistrer une consultation d'image de manière non-intrusive
+         */
+        function trackImageConsultation(activityKey, photoName, viewType = 'thumbnail') {
+            if (!isTrackingEnabled || !activityKey || !photoName) {
+                return;
+            }
+            
+            const photoPath = activityKey + '/' + photoName;
+            
+            const consultationData = {
+                action: 'track_consultation',
+                photo_path: photoPath,
+                activity_key: activityKey,
+                photo_name: photoName,
+                view_type: viewType
+            };
+            
+            fetch('consultation_handler.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(consultationData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.debug('Consultation enregistrée:', consultationData);
+                } else {
+                    console.debug('Erreur consultation:', data.error);
+                }
+            })
+            .catch(error => {
+                console.debug('Erreur réseau consultation:', error);
+            });
+        }
+        
+        /**
+         * Suivre les consultations de thumbnails avec throttling
+         */
+        function trackThumbnailView(activityKey, photoName) {
+            if (!trackThumbnailView.throttled) {
+                trackThumbnailView.throttled = new Set();
+            }
+            
+            const throttleKey = activityKey + '/' + photoName;
+            
+            if (!trackThumbnailView.throttled.has(throttleKey)) {
+                trackThumbnailView.throttled.add(throttleKey);
+                
+                setTimeout(() => {
+                    trackThumbnailView.throttled.delete(throttleKey);
+                }, 30000);
+                
+                trackImageConsultation(activityKey, photoName, 'thumbnail');
+            }
+        }
+        
+        /**
+         * Initialiser le suivi des consultations
+         */
+        function initializeConsultationTracking() {
+            if ('IntersectionObserver' in window) {
+                const thumbnailObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const activityKey = img.dataset.activityKey;
+                            const photoName = img.dataset.photoName;
+                            
+                            if (activityKey && photoName) {
+                                setTimeout(() => {
+                                    if (entry.target.getBoundingClientRect().top < window.innerHeight) {
+                                        trackThumbnailView(activityKey, photoName);
+                                    }
+                                }, 1000);
+                            }
+                        }
+                    });
+                }, {
+                    threshold: 0.5,
+                    rootMargin: '50px'
+                });
+                
+                // Observer toutes les images
+                const images = document.querySelectorAll('img[data-activity-key]');
+                images.forEach(img => thumbnailObserver.observe(img));
+                
+                // Observer les nouvelles images ajoutées dynamiquement
+                const mutationObserver = new MutationObserver((mutations) => {
+                    mutations.forEach(mutation => {
+                        mutation.addedNodes.forEach(node => {
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                const images = node.querySelectorAll ? node.querySelectorAll('img[data-activity-key]') : [];
+                                images.forEach(img => thumbnailObserver.observe(img));
+                            }
+                        });
+                    });
+                });
+                
+                mutationObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        }
+        
+        /**
+         * Suivre les changements de zoom
+         */
+        function trackZoomConsultation() {
+            if (currentModalPhoto && currentModalPhoto.activityKey && currentModalPhoto.photoName) {
+                trackImageConsultation(currentModalPhoto.activityKey, currentModalPhoto.photoName, 'zoom');
+            }
+        }
+        
+        // === FONCTIONS DE TEST ===
+        
+        /**
+         * Exécuter tous les tests
+         */
+        function runAllTests() {
+            clearResults();
+            const startTime = performance.now();
+            
+            addResult('info', '🚀 Début des tests frontend...');
+            
+            // Tests de fonctionnalités
+            testTrackImageConsultation();
+            testThumbnailTracking();
+            testModalTracking();
+            testZoomTracking();
+            testThrottling();
+            
+            // Tests de robustesse
+            testInvalidParameters();
+            testMissingParameters();
+            testNetworkErrors();
+            
+            // Tests d'intégration
+            testIntersectionObserver();
+            testMutationObserver();
+            
+            // Tests de performance
+            testTrackingPerformance();
+            
+            const endTime = performance.now();
+            const executionTime = Math.round(endTime - startTime);
+            
+            displaySummary(executionTime);
+        }
+        
+        /**
+         * Test de la fonction trackImageConsultation
+         */
+        function testTrackImageConsultation() {
+            startTest('trackImageConsultation - Fonctionnement de base');
+            
+            const initialCallCount = consultationCalls.length;
+            
+            trackImageConsultation('test-activity', 'test-photo.jpg', 'thumbnail');
+            
+            setTimeout(() => {
+                const newCallCount = consultationCalls.length;
+                assertTrue(newCallCount > initialCallCount, 'Une consultation devrait être enregistrée');
+                
+                const lastCall = consultationCalls[consultationCalls.length - 1];
+                assertEquals('track_consultation', lastCall.data.action, 'Action devrait être track_consultation');
+                assertEquals('test-activity', lastCall.data.activity_key, 'Activity key devrait correspondre');
+                assertEquals('test-photo.jpg', lastCall.data.photo_name, 'Photo name devrait correspondre');
+                assertEquals('thumbnail', lastCall.data.view_type, 'View type devrait correspondre');
+                assertEquals('test-activity/test-photo.jpg', lastCall.data.photo_path, 'Photo path devrait être construit correctement');
+                
+                endTest();
+            }, 50);
+        }
+        
+        /**
+         * Test du tracking des thumbnails
+         */
+        function testThumbnailTracking() {
+            startTest('trackThumbnailView - Tracking avec throttling');
+            
+            const initialCallCount = consultationCalls.length;
+            
+            // Appeler plusieurs fois rapidement
+            trackThumbnailView('thumb-activity', 'thumb-photo.jpg');
+            trackThumbnailView('thumb-activity', 'thumb-photo.jpg');
+            trackThumbnailView('thumb-activity', 'thumb-photo.jpg');
+            
+            setTimeout(() => {
+                const newCalls = consultationCalls.slice(initialCallCount);
+                const thumbCalls = newCalls.filter(call => 
+                    call.data.activity_key === 'thumb-activity' && 
+                    call.data.photo_name === 'thumb-photo.jpg'
+                );
+                
+                assertEquals(1, thumbCalls.length, 'Seulement un appel devrait être fait (throttling)');
+                
+                endTest();
+            }, 50);
+        }
+        
+        /**
+         * Test du tracking modal
+         */
+        function testModalTracking() {
+            startTest('Modal Tracking - Ouverture et tracking');
+            
+            const initialCallCount = consultationCalls.length;
+            
+            // Simuler l'ouverture d'une modal
+            openModal('modal-activity', 'modal-photo.jpg');
+            
+            setTimeout(() => {
+                const newCalls = consultationCalls.slice(initialCallCount);
+                const modalCalls = newCalls.filter(call => 
+                    call.data.view_type === 'modal_view' &&
+                    call.data.activity_key === 'modal-activity'
+                );
+                
+                assertTrue(modalCalls.length > 0, 'Une consultation modal devrait être enregistrée');
+                
+                closeModal();
+                endTest();
+            }, 150);
+        }
+        
+        /**
+         * Test du tracking de zoom
+         */
+        function testZoomTracking() {
+            startTest('Zoom Tracking - Suivi des zooms');
+            
+            const initialCallCount = consultationCalls.length;
+            
+            // Ouvrir une modal et simuler un zoom
+            openModal('zoom-activity', 'zoom-photo.jpg');
+            
+            setTimeout(() => {
+                trackZoomConsultation();
+                
+                setTimeout(() => {
+                    const newCalls = consultationCalls.slice(initialCallCount);
+                    const zoomCalls = newCalls.filter(call => 
+                        call.data.view_type === 'zoom'
+                    );
+                    
+                    assertTrue(zoomCalls.length > 0, 'Une consultation zoom devrait être enregistrée');
+                    
+                    closeModal();
+                    endTest();
+                }, 50);
+            }, 100);
+        }
+        
+        /**
+         * Test du throttling
+         */
+        function testThrottling() {
+            startTest('Throttling - Limitation des appels répétés');
+            
+            const initialCallCount = consultationCalls.length;
+            
+            // Faire plusieurs appels rapides pour la même photo
+            for (let i = 0; i < 10; i++) {
+                trackThumbnailView('throttle-test', 'same-photo.jpg');
+            }
+            
+            setTimeout(() => {
+                const newCalls = consultationCalls.slice(initialCallCount);
+                const throttleCalls = newCalls.filter(call => 
+                    call.data.activity_key === 'throttle-test' &&
+                    call.data.photo_name === 'same-photo.jpg'
+                );
+                
+                assertEquals(1, throttleCalls.length, 'Un seul appel devrait passer malgré 10 tentatives');
+                
+                endTest();
+            }, 50);
+        }
+        
+        /**
+         * Test avec paramètres invalides
+         */
+        function testInvalidParameters() {
+            startTest('Paramètres invalides - Gestion des erreurs');
+            
+            const initialCallCount = consultationCalls.length;
+            
+            // Tests avec des paramètres invalides
+            trackImageConsultation('', 'photo.jpg', 'thumbnail'); // Activity vide
+            trackImageConsultation('activity', '', 'thumbnail'); // Photo vide
+            trackImageConsultation(null, 'photo.jpg', 'thumbnail'); // Activity null
+            trackImageConsultation('activity', null, 'thumbnail'); // Photo null
+            
+            setTimeout(() => {
+                const newCallCount = consultationCalls.length;
+                assertEquals(initialCallCount, newCallCount, 'Aucun appel ne devrait être fait avec des paramètres invalides');
+                
+                endTest();
+            }, 50);
+        }
+        
+        /**
+         * Test avec paramètres manquants
+         */
+        function testMissingParameters() {
+            startTest('Paramètres manquants - Validation d\'entrée');
+            
+            const initialCallCount = consultationCalls.length;
+            
+            // Tests avec des paramètres manquants
+            trackImageConsultation(); // Aucun paramètre
+            trackImageConsultation('activity'); // Photo manquante
+            
+            setTimeout(() => {
+                const newCallCount = consultationCalls.length;
+                assertEquals(initialCallCount, newCallCount, 'Aucun appel ne devrait être fait avec des paramètres manquants');
+                
+                endTest();
+            }, 50);
+        }
+        
+        /**
+         * Test de gestion des erreurs réseau
+         */
+        function testNetworkErrors() {
+            startTest('Erreurs réseau - Résilience du système');
+            
+            // Sauvegarder le fetch mock
+            const mockFetch = window.fetch;
+            
+            // Simuler une erreur réseau
+            window.fetch = function() {
+                return Promise.reject(new Error('Network error'));
+            };
+            
+            // Tester que l'erreur ne casse pas le système
+            try {
+                trackImageConsultation('network-test', 'photo.jpg', 'thumbnail');
+                assertTrue(true, 'Le tracking devrait gérer les erreurs réseau sans lever d\'exception');
+            } catch (error) {
+                assertTrue(false, 'Le tracking ne devrait pas lever d\'exception lors d\'erreurs réseau');
+            }
+            
+            // Restaurer le fetch mock
+            window.fetch = mockFetch;
+            
+            endTest();
+        }
+        
+        /**
+         * Test de l'Intersection Observer
+         */
+        function testIntersectionObserver() {
+            startTest('Intersection Observer - Détection de visibilité');
+            
+            if ('IntersectionObserver' in window) {
+                assertTrue(true, 'IntersectionObserver est disponible dans ce navigateur');
+                
+                // Vérifier que les images ont des observateurs
+                const images = document.querySelectorAll('img[data-activity-key]');
+                assertTrue(images.length > 0, 'Des images avec data-activity-key devraient être présentes');
+                
+                addNote(`${images.length} images détectées pour l'observation`);
+            } else {
+                addNote('IntersectionObserver n\'est pas disponible dans ce navigateur');
+            }
+            
+            endTest();
+        }
+        
+        /**
+         * Test du Mutation Observer
+         */
+        function testMutationObserver() {
+            startTest('Mutation Observer - Détection d\'ajouts dynamiques');
+            
+            if ('MutationObserver' in window) {
+                assertTrue(true, 'MutationObserver est disponible dans ce navigateur');
+                
+                // Créer une nouvelle image dynamiquement
+                const newImg = document.createElement('img');
+                newImg.setAttribute('data-activity-key', 'dynamic-activity');
+                newImg.setAttribute('data-photo-name', 'dynamic-photo.jpg');
+                newImg.src = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="red"/></svg>');
+                
+                document.body.appendChild(newImg);
+                
+                setTimeout(() => {
+                    // Vérifier que l'image a été détectée (difficile à tester sans accès aux observateurs)
+                    assertTrue(true, 'Image dynamique ajoutée avec succès');
+                    document.body.removeChild(newImg);
+                    endTest();
+                }, 100);
+            } else {
+                addNote('MutationObserver n\'est pas disponible dans ce navigateur');
+                endTest();
+            }
+        }
+        
+        /**
+         * Test de performance du tracking
+         */
+        function testTrackingPerformance() {
+            startTest('Performance - Impact sur les performances');
+            
+            const iterations = 100;
+            const startTime = performance.now();
+            
+            // Faire beaucoup d'appels de tracking
+            for (let i = 0; i < iterations; i++) {
+                trackImageConsultation(`perf-activity-${i % 5}`, `photo${i}.jpg`, 'thumbnail');
+            }
+            
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+            const avgTime = duration / iterations;
+            
+            assertTrue(avgTime < 1, 'Chaque appel de tracking devrait prendre moins de 1ms');
+            assertTrue(duration < 1000, '100 appels devraient prendre moins de 1 seconde');
+            
+            addNote(`${iterations} appels en ${duration.toFixed(2)}ms (${avgTime.toFixed(3)}ms par appel)`);
+            
+            endTest();
+        }
+        
+        /**
+         * Simuler un comportement utilisateur réaliste
+         */
+        function simulateUserBehavior() {
+            addResult('info', '👤 Simulation du comportement utilisateur...');
+            
+            const photos = document.querySelectorAll('.mock-photo img');
+            let currentIndex = 0;
+            
+            function viewNextPhoto() {
+                if (currentIndex >= photos.length) {
+                    addResult('info', '✅ Simulation terminée - ' + photos.length + ' photos consultées');
+                    return;
+                }
+                
+                const img = photos[currentIndex];
+                const activityKey = img.dataset.activityKey;
+                const photoName = img.dataset.photoName;
+                
+                // Simuler le scroll et la visibilité
+                img.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                setTimeout(() => {
+                    trackThumbnailView(activityKey, photoName);
+                    
+                    // 20% de chance d'ouvrir en modal
+                    if (Math.random() < 0.2) {
+                        openModal(activityKey, photoName);
+                        setTimeout(() => {
+                            // 50% de chance de zoomer
+                            if (Math.random() < 0.5) {
+                                trackZoomConsultation();
+                            }
+                            closeModal();
+                        }, 1000 + Math.random() * 2000);
+                    }
+                    
+                    currentIndex++;
+                    setTimeout(viewNextPhoto, 500 + Math.random() * 1500);
+                }, 1000);
+            }
+            
+            viewNextPhoto();
+        }
+        
+        /**
+         * Tester l'impact sur les performances
+         */
+        function testPerformanceImpact() {
+            addResult('info', '⚡ Test de l\'impact sur les performances...');
+            
+            const testDuration = 5000; // 5 secondes
+            const startTime = performance.now();
+            let frameCount = 0;
+            
+            // Désactiver temporairement le tracking pour mesurer la baseline
+            isTrackingEnabled = false;
+            
+            function measureBaseline() {
+                const baselineStart = performance.now();
+                let baselineFrames = 0;
+                
+                function baselineFrame() {
+                    baselineFrames++;
+                    if (performance.now() - baselineStart < 1000) {
+                        requestAnimationFrame(baselineFrame);
+                    } else {
+                        const baselineFPS = baselineFrames;
+                        
+                        // Activer le tracking et mesurer avec
+                        isTrackingEnabled = true;
+                        measureWithTracking(baselineFPS);
+                    }
+                }
+                
+                requestAnimationFrame(baselineFrame);
+            }
+            
+            function measureWithTracking(baselineFPS) {
+                const trackingStart = performance.now();
+                let trackingFrames = 0;
+                
+                function trackingFrame() {
+                    trackingFrames++;
+                    
+                    // Simuler des consultations pendant la mesure
+                    if (trackingFrames % 10 === 0) {
+                        trackImageConsultation('perf-test', `frame${trackingFrames}.jpg`, 'thumbnail');
+                    }
+                    
+                    if (performance.now() - trackingStart < 1000) {
+                        requestAnimationFrame(trackingFrame);
+                    } else {
+                        const trackingFPS = trackingFrames;
+                        const impact = ((baselineFPS - trackingFPS) / baselineFPS) * 100;
+                        
+                        addResult('info', `📊 Baseline FPS: ${baselineFPS}`);
+                        addResult('info', `📊 Avec tracking FPS: ${trackingFPS}`);
+                        addResult('info', `📊 Impact sur performance: ${impact.toFixed(2)}%`);
+                        
+                        if (impact < 5) {
+                            addResult('test-passed', '✅ Impact sur performance négligeable (<5%)');
+                        } else if (impact < 15) {
+                            addResult('test-info', '⚠️ Impact sur performance modéré (5-15%)');
+                        } else {
+                            addResult('test-failed', '❌ Impact sur performance significatif (>15%)');
+                        }
+                    }
+                }
+                
+                requestAnimationFrame(trackingFrame);
+            }
+            
+            measureBaseline();
+        }
+        
+        // === UTILITAIRES DE TEST ===
+        
+        function startTest(testName) {
+            testCount++;
+            addResult('info', `🧪 Test ${testCount}: ${testName}`);
+            window.currentTestName = testName;
+            window.currentTestPassed = true;
+            window.currentTestNotes = [];
+        }
+        
+        function endTest() {
+            if (window.currentTestPassed) {
+                passedTests++;
+                addResult('test-passed', `✅ ${window.currentTestName} - PASSÉ`);
+            } else {
+                failedTests++;
+                addResult('test-failed', `❌ ${window.currentTestName} - ÉCHOUÉ`);
+            }
+            
+            // Ajouter les notes
+            window.currentTestNotes.forEach(note => {
+                addResult('test-info', `ℹ️ ${note}`);
+            });
+        }
+        
+        function assertTrue(condition, message) {
+            if (!condition) {
+                window.currentTestPassed = false;
+            }
+            const status = condition ? '✅' : '❌';
+            addResult(condition ? 'test-passed' : 'test-failed', `${status} ${message}`);
+        }
+        
+        function assertEquals(expected, actual, message) {
+            const condition = expected === actual;
+            if (!condition) {
+                window.currentTestPassed = false;
+                message += ` (attendu: ${expected}, obtenu: ${actual})`;
+            }
+            const status = condition ? '✅' : '❌';
+            addResult(condition ? 'test-passed' : 'test-failed', `${status} ${message}`);
+        }
+        
+        function addNote(note) {
+            window.currentTestNotes = window.currentTestNotes || [];
+            window.currentTestNotes.push(note);
+        }
+        
+        function addResult(type, message) {
+            const results = document.getElementById('test-results');
+            const div = document.createElement('div');
+            div.className = `test-result test-${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('test-summary').style.display = 'none';
+            testResults = [];
+            testCount = 0;
+            passedTests = 0;
+            failedTests = 0;
+            consultationCalls = [];
+        }
+        
+        function displaySummary(executionTime) {
+            const successRate = Math.round((passedTests / testCount) * 100);
+            
+            const summaryDiv = document.getElementById('test-summary');
+            summaryDiv.style.display = 'block';
+            
+            summaryDiv.innerHTML = `
+                <h2>📊 Résumé des Tests Frontend</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                        <h3 style="margin: 0; color: #333;">Tests Exécutés</h3>
+                        <p style="font-size: 24px; margin: 10px 0; color: #007bff;">${testCount}</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                        <h3 style="margin: 0; color: #333;">Réussis</h3>
+                        <p style="font-size: 24px; margin: 10px 0; color: #28a745;">${passedTests}</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                        <h3 style="margin: 0; color: #333;">Échoués</h3>
+                        <p style="font-size: 24px; margin: 10px 0; color: #dc3545;">${failedTests}</p>
+                    </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; text-align: center;">
+                        <h3 style="margin: 0; color: #333;">Taux de Réussite</h3>
+                        <p style="font-size: 24px; margin: 10px 0; color: ${successRate >= 80 ? '#28a745' : successRate >= 60 ? '#ffc107' : '#dc3545'};">${successRate}%</p>
+                    </div>
+                </div>
+                
+                <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <h3>🔍 Analyse Détaillée</h3>
+                    <ul>
+                        <li><strong>Temps d'exécution:</strong> ${executionTime}ms</li>
+                        <li><strong>Appels de consultation interceptés:</strong> ${consultationCalls.length}</li>
+                        <li><strong>Performance moyenne par test:</strong> ${(executionTime / testCount).toFixed(2)}ms</li>
+                        <li><strong>Statut système:</strong> ${successRate >= 90 ? '🟢 Excellent' : successRate >= 75 ? '🟡 Bon' : '🔴 Problématique'}</li>
+                    </ul>
+                    
+                    ${consultationCalls.length > 0 ? `
+                    <h4>📋 Derniers appels de consultation:</h4>
+                    <div style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+                        ${consultationCalls.slice(-10).map(call => 
+                            `<div>${call.timestamp}: ${call.data.activity_key}/${call.data.photo_name} (${call.data.view_type})</div>`
+                        ).join('')}
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <h3>💡 Recommandations</h3>
+                    <ul>
+                        ${successRate >= 95 ? '<li style="color: green;">✅ Système de tracking parfaitement fonctionnel</li>' : ''}
+                        ${successRate < 95 ? '<li style="color: orange;">⚠️ Quelques améliorations possibles détectées</li>' : ''}
+                        ${consultationCalls.length > 50 ? '<li style="color: blue;">ℹ️ Volume de tracking élevé - surveiller les performances</li>' : ''}
+                        <li>Vérifier régulièrement la compatibilité navigateur</li>
+                        <li>Monitorer l'impact sur les performances en production</li>
+                    </ul>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

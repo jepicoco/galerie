@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Force Refresh</title>
+</head>
+<body>
+    <h1>Test du Force Refresh après Paiement</h1>
+
+    <script>
+        // Simuler les variables globales
+        window.currentStatus = 'unpaid';
+        let isLoadingTab = false;
+
+        // Simuler switchTab avec la nouvelle logique
+        window.switchTab = async function(status, forceRefresh = false) {
+            console.log('🔄 switchTab appelée avec status:', status, 'forceRefresh:', forceRefresh);
+            console.log('📊 Statut actuel (currentStatus):', window.currentStatus);
+            console.log('⏳ isLoadingTab:', isLoadingTab);
+
+            if (isLoadingTab) {
+                console.log('❌ Abandon - déjà en cours de chargement');
+                return;
+            }
+
+            if (window.currentStatus === status && !forceRefresh) {
+                console.log('❌ Abandon - même statut et pas de forceRefresh');
+                return;
+            }
+
+            if (forceRefresh) {
+                console.log('🔄 Force refresh activé - continuation malgré le même statut');
+            }
+
+            console.log('✅ Rafraîchissement en cours...');
+            // Simuler le rafraîchissement
+            return Promise.resolve('success');
+        };
+
+        // Test 1: Appel normal (devrait être bloqué)
+        console.log('\n=== Test 1: Appel normal avec même statut ===');
+        window.switchTab('unpaid');
+
+        // Test 2: Appel avec forceRefresh (devrait passer)
+        console.log('\n=== Test 2: Appel avec forceRefresh ===');
+        window.switchTab('unpaid', true);
+
+        // Test 3: Simulation complète du paiement
+        console.log('\n=== Test 3: Simulation post-paiement ===');
+        setTimeout(() => {
+            console.log('🎉 Simulation: Paiement traité avec succès');
+            console.log('⏱️ Démarrage du timeout de 500ms...');
+            setTimeout(() => {
+                console.log('🔄 Timeout écoulé, vérification de switchTab...');
+                console.log('typeof window.switchTab:', typeof window.switchTab);
+                console.log('window.currentStatus:', window.currentStatus);
+
+                if (typeof window.switchTab === 'function') {
+                    console.log('✅ switchTab trouvée, appel avec status:', window.currentStatus || 'unpaid');
+                    // Nouvelle logique avec forceRefresh=true
+                    window.switchTab(window.currentStatus || 'unpaid', true);
+                } else {
+                    console.log('❌ switchTab non trouvée');
+                }
+            }, 500);
+        }, 1000);
+    </script>
+
+    <p>Ouvrez la console pour voir les résultats du test.</p>
+</body>
+</html>

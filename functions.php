@@ -78,7 +78,8 @@ function scanPhotosDirectories() {
         }
         
         if (!empty($photos)) {
-            sort($photos);
+            natsort($photos);
+            $photos = array_values($photos); // Réindexer après natsort
             
             $activities[$activityKey] = [
                 'name' => ucfirst(str_replace(['_', '-'], ' ', $activityKey)),
@@ -124,6 +125,20 @@ function saveActivitiesData($activities) {
 }
 
 /**
+ * Charger les données des activités depuis le fichier JSON
+ */
+function loadActivitiesData() {
+    $dataFile = DATA_DIR . 'activities.json';
+
+    if (file_exists($dataFile)) {
+        $content = file_get_contents($dataFile);
+        return json_decode($content, true) ?: [];
+    }
+
+    return [];
+}
+
+/**
  * Debug des fichiers de commandes
  */
 function debugOrderFiles($reference, $ordersDir) {
@@ -146,7 +161,7 @@ function debugOrderFiles($reference, $ordersDir) {
 function calculateOrderTotal($order) {
     $total = 0;
     foreach ($order['items'] as $item) {
-        $total += $item['total_price'];
+        $total += $item['total_price']*$item['quantity'];
     }
     return $total;
 }
@@ -263,25 +278,9 @@ foreach ($activities as $activityKey => $activity) {
  * @version 1.0
  */
 function countPendingRetrievals() {
-    $csvFile = 'data/commandes.csv';
-    $count = 0;
-    
-    if (!file_exists($csvFile)) {
-        return 0;
-    }
-    
-    $handle = fopen($csvFile, 'r');
-    $headers = fgetcsv($handle, 0, ';');
-    
-    while (($data = fgetcsv($handle, 0, ';')) !== FALSE) {
-        $row = array_combine($headers, $data);
-        if ($row['Statut paiement'] === 'Réglé' && $row['Statut retrait'] !== 'Récupéré') {
-            $count++;
-        }
-    }
-    
-    fclose($handle);
-    return $count;
+    require_once 'classes/orders.list.class.php';
+    $ordersList = new OrdersList();
+    return $ordersList->countPendingRetrievals();
 }
 
 /**
@@ -290,25 +289,9 @@ function countPendingRetrievals() {
  * @version 1.0
  */
 function countPendingPayments() {
-    $csvFile = 'data/commandes.csv';
-    $count = 0;
-    
-    if (!file_exists($csvFile)) {
-        return 0;
-    }
-    
-    $handle = fopen($csvFile, 'r');
-    $headers = fgetcsv($handle, 0, ';');
-    
-    while (($data = fgetcsv($handle, 0, ';')) !== FALSE) {
-        $row = array_combine($headers, $data);
-        if ($row['Statut paiement'] !== 'Réglé') {
-            $count++;
-        }
-    }
-    
-    fclose($handle);
-    return $count;
+    require_once 'classes/orders.list.class.php';
+    $ordersList = new OrdersList();
+    return $ordersList->countPendingPayments();
 }
 
 /**
@@ -339,5 +322,195 @@ function cleanOldTempOrders($ordersDir) {
     }
     
     return $deletedCount;
+}
+
+/**
+ * Obtenir les statistiques de consultations pour l'administration
+ * @param string $period Période ('today', 'week', 'month')
+ * @return array Statistiques de consultations
+ * @version 1.0
+ */
+function getConsultationsSummary($period = 'today') {
+    $consultationsFile = DATA_DIR . 'consultations.json';
+    
+    if (!file_exists($consultationsFile)) {
+        return [
+            'total_consultations' => 0,
+            'unique_photos' => 0,
+            'unique_sessions' => 0,
+            'most_viewed_activity' => null
+        ];
+    }
+    
+    $content = file_get_contents($consultationsFile);
+    $consultations = json_decode($content, true);
+    
+    if (!is_array($consultations)) {
+        return [];
+    }
+    
+    // Filtrer par période
+    $startTime = getConsultationStartTimeForPeriod($period);
+    $filteredConsultations = array_filter($consultations, function($consultation) use ($startTime) {
+        return strtotime($consultation['timestamp']) >= $startTime;
+    });
+    
+    // Calculer les statistiques de base
+    $uniquePhotos = [];
+    $uniqueSessions = [];
+    $activityCounts = [];
+    
+    foreach ($filteredConsultations as $consultation) {
+        $photoKey = $consultation['activity_key'] . '/' . $consultation['photo_name'];
+        $uniquePhotos[$photoKey] = true;
+        $uniqueSessions[$consultation['session_id']] = true;
+        
+        $activity = $consultation['activity_key'];
+        $activityCounts[$activity] = ($activityCounts[$activity] ?? 0) + 1;
+    }
+    
+    // Trouver l'activité la plus consultée
+    $mostViewedActivity = null;
+    if (!empty($activityCounts)) {
+        arsort($activityCounts);
+        $mostViewedActivity = array_key_first($activityCounts);
+    }
+    
+    return [
+        'total_consultations' => count($filteredConsultations),
+        'unique_photos' => count($uniquePhotos),
+        'unique_sessions' => count($uniqueSessions),
+        'most_viewed_activity' => $mostViewedActivity,
+        'activity_counts' => $activityCounts
+    ];
+}
+
+/**
+ * Nettoyer les anciennes consultations
+ * @param int $daysToKeep Nombre de jours à conserver
+ * @return int Nombre d'entrées supprimées
+ */
+function cleanOldConsultations($daysToKeep = 30) {
+    $consultationsFile = DATA_DIR . 'consultations.json';
+    
+    if (!file_exists($consultationsFile)) {
+        return 0;
+    }
+    
+    $content = file_get_contents($consultationsFile);
+    $consultations = json_decode($content, true);
+    
+    if (!is_array($consultations)) {
+        return 0;
+    }
+    
+    $cutoffTime = time() - ($daysToKeep * 24 * 60 * 60);
+    $originalCount = count($consultations);
+    
+    // Filtrer les consultations récentes
+    $recentConsultations = array_filter($consultations, function($consultation) use ($cutoffTime) {
+        return strtotime($consultation['timestamp']) >= $cutoffTime;
+    });
+    
+    // Sauvegarder les consultations filtrées
+    $json = json_encode(array_values($recentConsultations), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    file_put_contents($consultationsFile, $json, LOCK_EX);
+    
+    return $originalCount - count($recentConsultations);
+}
+
+/**
+ * Obtenir le timestamp de début pour une période de consultation
+ * @param string $period Période demandée
+ * @return int Timestamp de début
+ */
+function getConsultationStartTimeForPeriod($period) {
+    switch ($period) {
+        case 'today':
+            return strtotime('today');
+        case 'yesterday':
+            return strtotime('yesterday');
+        case 'week':
+            return strtotime('-7 days');
+        case 'month':
+            return strtotime('-30 days');
+        case 'year':
+            return strtotime('-1 year');
+        default:
+            return strtotime('today');
+    }
+}
+
+/**
+ * Obtenir les photos les plus consultées pour l'interface admin
+ * @param int $limit Nombre maximum de photos à retourner
+ * @param string $period Période à analyser
+ * @return array Photos populaires avec leurs statistiques
+ */
+function getTopConsultedPhotos($limit = 5, $period = 'week') {
+    $consultationsFile = DATA_DIR . 'consultations.json';
+    
+    if (!file_exists($consultationsFile)) {
+        return [];
+    }
+    
+    $content = file_get_contents($consultationsFile);
+    $consultations = json_decode($content, true);
+    
+    if (!is_array($consultations)) {
+        return [];
+    }
+    
+    // Filtrer par période
+    $startTime = getConsultationStartTimeForPeriod($period);
+    $filteredConsultations = array_filter($consultations, function($consultation) use ($startTime) {
+        return strtotime($consultation['timestamp']) >= $startTime;
+    });
+    
+    // Compter les consultations par photo
+    $photoCounts = [];
+    foreach ($filteredConsultations as $consultation) {
+        $photoKey = $consultation['activity_key'] . '/' . $consultation['photo_name'];
+        
+        if (!isset($photoCounts[$photoKey])) {
+            $photoCounts[$photoKey] = [
+                'activity_key' => $consultation['activity_key'],
+                'photo_name' => $consultation['photo_name'],
+                'consultation_count' => 0,
+                'unique_sessions' => []
+            ];
+        }
+        
+        $photoCounts[$photoKey]['consultation_count']++;
+        $photoCounts[$photoKey]['unique_sessions'][$consultation['session_id']] = true;
+    }
+    
+    // Convertir les sessions uniques en nombre et générer les URLs
+    foreach ($photoCounts as $photoKey => &$photoData) {
+        $photoData['unique_sessions'] = count($photoData['unique_sessions']);
+        $photoData['thumbnail_url'] = GetImageUrl(
+            $photoData['activity_key'] . '/' . $photoData['photo_name'], 
+            IMG_THUMBNAIL
+        );
+    }
+    
+    // Trier par nombre de consultations
+    uasort($photoCounts, function($a, $b) {
+        return $b['consultation_count'] - $a['consultation_count'];
+    });
+    
+    return array_slice($photoCounts, 0, $limit);
+}
+
+/**
+ * Nettoie une valeur pour l'utilisation dans un CSV
+ * Échappe les caractères spéciaux qui peuvent causer des problèmes dans les CSV
+ * 
+ * @param mixed $value La valeur à nettoyer
+ * @return string La valeur nettoyée pour CSV
+ */
+function cleanCSVValue($value) {
+    $cleanValue = str_replace([";", "\n", "\r", "\""], ["", "", "", "\"\""], (string)$value);
+    return $cleanValue;
 }
 ?>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Badges Header</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Test styles additionnels pour vérifier les badges */
+        .test-section {
+            margin: 2rem 0;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .force-show-badge {
+            display: flex !important;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><a href="/index.php">Test Badges</a></h1>
+            <nav>
+                <!-- Test des badges dans le header -->
+                <a href="#" class="btn btn-secondary btn-with-badge" data-badge-type="pickup">
+                    📦 Retraits
+                    <span class="notification-badge pickup show force-show-badge">3</span>
+                </a>
+                <a href="#" class="btn btn-secondary btn-with-badge" data-badge-type="orders">
+                    📋 Commandes
+                    <span class="notification-badge orders show force-show-badge">5</span>
+                </a>
+                <a href="#" class="btn btn-secondary">🖼️ Galerie</a>
+            </nav>
+        </div>
+    </header>
+
+    <main style="padding: 2rem;">
+        <div class="test-section">
+            <h2>Test des badges dans différents contextes</h2>
+
+            <div class="test-buttons">
+                <a href="#" class="btn btn-primary btn-with-badge">
+                    Bouton Primary
+                    <span class="notification-badge orders show force-show-badge">1</span>
+                </a>
+
+                <a href="#" class="btn btn-secondary btn-with-badge">
+                    Bouton Secondary
+                    <span class="notification-badge pickup show force-show-badge">99+</span>
+                </a>
+
+                <a href="#" class="btn btn-outline btn-with-badge">
+                    Bouton Outline
+                    <span class="notification-badge new show force-show-badge">12</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Vérifications :</h3>
+            <ul>
+                <li>✅ Les badges sortent-ils correctement des boutons ?</li>
+                <li>✅ Les badges sont-ils visibles au-dessus de tous les autres éléments ?</li>
+                <li>✅ Les badges gardent-ils leur position lors du hover ?</li>
+                <li>✅ Les badges sont-ils correctement positionnés en responsive ?</li>
+            </ul>
+        </div>
+    </main>
+
+    <script>
+        // Test du système de badges dynamique
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Test badges loaded');
+
+            // Ajouter des events pour tester les interactions
+            document.querySelectorAll('.btn-with-badge').forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    console.log('Hover sur bouton avec badge');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
