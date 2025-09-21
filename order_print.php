@@ -160,8 +160,10 @@
 let localPageNumber = 1;
 // Fonction pour créer une page avec les deux tableaux côte à côte
 function createPhotosPage(itemsAdherents, itemsOrganization, siteNameValue, printDate1, printDate2, orderData, pageNumber) {
-    // La première page de photos est la "Page 1", la deuxième "Page 2", etc.
-    const pageTitle = ` (Page ${pageNumber})`;
+    // Afficher "Page X/Y" si totalPages est disponible, sinon juste "Page X"
+    const pageTitle = orderData.totalPages ?
+        ` (Page ${pageNumber}/${orderData.totalPages})` :
+        ` (Page ${pageNumber})`;
 
     // Déterminer l'ordre selon la page (pair/impair)
     const actualPageNumber = pageNumber;

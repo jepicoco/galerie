@@ -229,14 +229,18 @@ function handlePrintOverflow() {
         items2Container = createTestData(true); // true pour ajouter colonne supplémentaire
     }
     
+    // Calculer le nombre total de pages nécessaires (minimum 1 même si pas d'items)
+    const totalPages = Math.max(1, Math.ceil(items1Container.length / maxItemsPerPage));
+    console.log(`Nombre total de pages calculé: ${totalPages} (${items1Container.length} items, ${maxItemsPerPage} par page)`);
+
     // Créer l'objet orderData proprement
     const orderDataForPages = {
         reference: orderData.reference,
         totalPhotos1: orderData.totalPhotos1,
         totalPhotos2: orderData.totalPhotos2,
-        totalPhotos: orderData.totalPhotos1
+        totalPhotos: orderData.totalPhotos1,
+        totalPages: totalPages
     };
-
 
     createPagesForCopy(
         items1Container,

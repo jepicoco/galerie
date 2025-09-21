@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Calcul Pages</title>
+</head>
+<body>
+    <h1>Test Calcul Nombre de Pages</h1>
+    <div id="results"></div>
+
+    <script>
+        function testPageCalculation() {
+            const maxItemsPerPage = 12;
+            const testCases = [
+                { items: 8, command: 'CMD20250916141326' },
+                { items: 10, command: 'CMD20250915140648' },
+                { items: 21, command: 'CMD20250916135423' },
+                { items: 5, command: 'Test petit' },
+                { items: 12, command: 'Test exact' },
+                { items: 13, command: 'Test débordement' },
+                { items: 24, command: 'Test double page' },
+                { items: 25, command: 'Test triple page' }
+            ];
+
+            let output = '<h2>Résultats du calcul de pages</h2><table border="1"><tr><th>Commande</th><th>Items</th><th>Pages calculées</th><th>Affichage</th></tr>';
+
+            testCases.forEach(test => {
+                const totalPages = Math.max(1, Math.ceil(test.items / maxItemsPerPage));
+
+                // Générer les titres pour chaque page
+                let pageTitles = [];
+                for (let i = 1; i <= totalPages; i++) {
+                    pageTitles.push(`Page ${i}/${totalPages}`);
+                }
+
+                output += `
+                    <tr>
+                        <td>${test.command}</td>
+                        <td>${test.items}</td>
+                        <td>${totalPages}</td>
+                        <td>${pageTitles.join(', ')}</td>
+                    </tr>
+                `;
+            });
+
+            output += '</table>';
+            document.getElementById('results').innerHTML = output;
+        }
+
+        // Lancer le test automatiquement
+        testPageCalculation();
+    </script>
+</body>
+</html>
