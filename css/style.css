@@ -2550,3 +2550,80 @@ img {
         transform: scale(1);
     }
 }
+
+/* === Navigation améliorée === */
+
+/* Breadcrumb pour pages admin */
+.breadcrumb {
+    font-size: 0.85em;
+    color: #666;
+    margin-bottom: 10px;
+    padding: 5px 0;
+}
+
+.breadcrumb .current-page {
+    font-weight: 600;
+    color: #2563eb;
+}
+
+/* État actif des boutons de navigation */
+.btn.active {
+    background: #2563eb !important;
+    color: white !important;
+    cursor: default;
+    position: relative;
+    font-weight: 600;
+}
+
+.btn.active:hover {
+    background: #2563eb !important;
+    color: white !important;
+    transform: none;
+}
+
+/* Indicateur visuel pour page active */
+.btn.active::after {
+    content: "•";
+    margin-left: 8px;
+    font-weight: bold;
+    opacity: 0.8;
+}
+
+/* Empêcher le clic sur la page active mais permettre les badges */
+.btn.active {
+    pointer-events: none;
+}
+
+/* Permettre les badges sur les boutons actifs */
+.btn.active .notification-badge {
+    pointer-events: auto;
+}
+
+/* Séparateur visuel */
+.nav-separator {
+    width: 1px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 15px;
+    align-self: center;
+}
+
+/* Amélioration responsive */
+@media (max-width: 768px) {
+    .breadcrumb {
+        font-size: 0.8em;
+        margin-bottom: 8px;
+    }
+
+    .nav-separator {
+        display: none;
+    }
+
+    .btn.active::after {
+        display: none;
+    }
+
+    .btn.active {
+        border-bottom: 3px solid white;
+    }
+}

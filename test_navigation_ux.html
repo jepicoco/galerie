@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Navigation UX</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { padding: 20px; background: #f5f5f5; }
+        .demo-section { margin: 30px 0; padding: 20px; background: white; border-radius: 8px; }
+        .comparison { display: flex; gap: 20px; }
+        .comparison > div { flex: 1; }
+        header { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Test Amélioration Navigation UX</h1>
+
+    <div class="demo-section">
+        <h2>🎯 Nouvelle Navigation (Recommandée)</h2>
+        <div class="breadcrumb">
+            <span>Admin</span> › <span class="current-page">Retraits</span>
+        </div>
+        <nav style="display: flex; gap: 10px; align-items: center;">
+            <a href="#" class="btn btn-secondary btn-with-badge active">
+                📦 Retraits
+                <span class="notification-badge show" style="display: flex;">3</span>
+            </a>
+            <a href="#" class="btn btn-secondary btn-with-badge">
+                📋 Commandes
+                <span class="notification-badge show" style="display: flex;">5</span>
+            </a>
+            <a href="#" class="btn btn-secondary">🖼️ Gestion de la galerie</a>
+            <a href="#" class="btn btn-secondary">⚙️ Paramètres</a>
+            <div class="nav-separator"></div>
+            <a href="#" class="btn btn-outline">← Retour à la galerie</a>
+        </nav>
+
+        <div style="margin-top: 15px; padding: 10px; background: #e8f5e8; border-radius: 4px;">
+            ✅ <strong>Avantages :</strong>
+            <ul style="margin: 5px 0;">
+                <li>Navigation toujours identique et prédictible</li>
+                <li>Indicateur visuel clair de la page active (bleu + point)</li>
+                <li>Breadcrumb pour contexte supplémentaire</li>
+                <li>Badges toujours visibles sur toutes les pages</li>
+                <li>Pas de désorientation utilisateur</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>⚠️ Ancienne Navigation (Problématique)</h2>
+        <nav style="display: flex; gap: 10px; align-items: center;">
+            <!-- Simulation: bouton "Retraits" manquant car on est sur cette page -->
+            <a href="#" class="btn btn-secondary btn-with-badge">
+                📋 Commandes
+                <span class="notification-badge show" style="display: flex;">5</span>
+            </a>
+            <a href="#" class="btn btn-secondary">🖼️ Gestion de la galerie</a>
+            <a href="#" class="btn btn-secondary">⚙️ Paramètres</a>
+            <a href="#" class="btn btn-outline">← Retour à la galerie</a>
+        </nav>
+
+        <div style="margin-top: 15px; padding: 10px; background: #ffeaea; border-radius: 4px;">
+            ❌ <strong>Problèmes :</strong>
+            <ul style="margin: 5px 0;">
+                <li>Bouton "Retraits" disparaît → utilisateur désorienté</li>
+                <li>Menu change selon la page → imprévisible</li>
+                <li>Pas d'indication claire de la page active</li>
+                <li>Badge "Retraits" invisible sur page retraits</li>
+                <li>Utilisateur ne sait plus où il est</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>📱 Version Mobile</h2>
+        <div style="max-width: 400px;">
+            <div class="breadcrumb">
+                <span>Admin</span> › <span class="current-page">Commandes</span>
+            </div>
+            <nav style="display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.9em;">
+                <a href="#" class="btn btn-secondary">📦 Retraits</a>
+                <a href="#" class="btn btn-secondary active">📋 Commandes</a>
+                <a href="#" class="btn btn-secondary">🖼️ Galerie</a>
+                <a href="#" class="btn btn-secondary">⚙️ Param.</a>
+                <a href="#" class="btn btn-outline">← Retour</a>
+            </nav>
+        </div>
+        <p><em>Sur mobile : bordure inférieure au lieu du point, textes raccourcis</em></p>
+    </div>
+</body>
+</html>
