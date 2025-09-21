@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Print Simple</title>
+    <style>
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #000; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test Print Simple</h1>
+
+    <div id="debug-output" class="debug"></div>
+
+    <div id="print-container">
+        <div class="print-single-page">
+            <h2>Test Table</h2>
+            <table>
+                <thead>
+                    <tr><th>Activité</th><th>Photo</th><th>Qté</th></tr>
+                </thead>
+                <tbody id="print-items-1">
+                    <!-- Sera rempli par JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Test avec les données réelles des commandes problématiques
+        const testData = {
+            'CMD20250916141326': {
+                "reference": "CMD20250916141326",
+                "items": {
+                    "LA MER/LA MER (39).JPG": {
+                        "activity_key": "LA MER",
+                        "photo_name": "LA MER (39).JPG",
+                        "quantity": 1,
+                        "pricing_type": "Photo"
+                    },
+                    "LA MER/LA MER (43).JPG": {
+                        "activity_key": "LA MER",
+                        "photo_name": "LA MER (43).JPG",
+                        "quantity": 1,
+                        "pricing_type": "Photo"
+                    }
+                }
+            }
+        };
+
+        function testFillData(orderData) {
+            const debug = document.getElementById('debug-output');
+            debug.innerHTML = '<h3>Debug Output</h3>';
+
+            try {
+                const itemsTable = document.getElementById('print-items-1');
+                if (!itemsTable) {
+                    debug.innerHTML += '<p>❌ Table print-items-1 non trouvée</p>';
+                    return;
+                }
+
+                debug.innerHTML += '<p>✅ Table trouvée</p>';
+                debug.innerHTML += `<p>Nombre d'items à traiter: ${Object.keys(orderData.items).length}</p>`;
+
+                itemsTable.innerHTML = '';
+                let itemCount = 0;
+
+                Object.values(orderData.items).forEach((item, index) => {
+                    try {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.activity_key}</td>
+                            <td>${item.photo_name}</td>
+                            <td>${item.quantity}</td>
+                        `;
+                        itemsTable.appendChild(row);
+                        itemCount++;
+                        debug.innerHTML += `<p>✅ Item ${index + 1} ajouté: ${item.activity_key}</p>`;
+                    } catch (error) {
+                        debug.innerHTML += `<p>❌ Erreur item ${index + 1}: ${error.message}</p>`;
+                    }
+                });
+
+                debug.innerHTML += `<p><strong>Total items ajoutés: ${itemCount}</strong></p>`;
+                debug.innerHTML += `<p>Nombre de lignes dans le tableau: ${itemsTable.children.length}</p>`;
+
+            } catch (error) {
+                debug.innerHTML += `<p>❌ Erreur générale: ${error.message}</p>`;
+            }
+        }
+
+        // Tester automatiquement
+        testFillData(testData['CMD20250916141326']);
+    </script>
+</body>
+</html>

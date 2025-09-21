@@ -72,6 +72,10 @@ function printOrderSlip(reference = null) {
 
 // Remplir les données pour l'impression
 function fillPrintData(orderData) {
+    console.log('=== fillPrintData appelée ===');
+    console.log('OrderData:', orderData);
+    console.log('Nombre d\'items:', Object.keys(orderData.items).length);
+
     // NETTOYAGE GLOBAL : Supprimer toutes les pages de continuation existantes
     const container = document.getElementById('print-container');
     if (container) {
@@ -134,27 +138,43 @@ function fillPrintData(orderData) {
     
         itemsTable.innerHTML = '';
 
-        if(i === 2) {
-            Object.values(orderData.items).forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.activity_key}</td>
-                    <td>${getPhotoName(item)}</td>
-                    <td style="text-align: center;">${item.quantity}</td>
-                    <td style="text-align: center;">☐</td>
-                `;
-                itemsTable.appendChild(row);
-            });
-        } else {
-            Object.values(orderData.items).forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${item.activity_key}</td>
-                    <td>${getPhotoName(item)}</td>
-                    <td style="text-align: center;">${item.quantity}</td>
-                `;
-                itemsTable.appendChild(row);
-            });
+        try {
+            if(i === 2) {
+                Object.values(orderData.items).forEach((item, index) => {
+                    try {
+                        const row = document.createElement('tr');
+                        const photoName = getPhotoName ? getPhotoName(item) : item.photo_name;
+                        row.innerHTML = `
+                            <td>${item.activity_key || 'N/A'}</td>
+                            <td>${photoName || 'N/A'}</td>
+                            <td style="text-align: center;">${item.quantity || 0}</td>
+                            <td style="text-align: center;">☐</td>
+                        `;
+                        itemsTable.appendChild(row);
+                        console.log(`Item ${index + 1} ajouté (exemplaire ${i}):`, item.activity_key);
+                    } catch (error) {
+                        console.error(`Erreur item ${index + 1} (exemplaire ${i}):`, error, item);
+                    }
+                });
+            } else {
+                Object.values(orderData.items).forEach((item, index) => {
+                    try {
+                        const row = document.createElement('tr');
+                        const photoName = getPhotoName ? getPhotoName(item) : item.photo_name;
+                        row.innerHTML = `
+                            <td>${item.activity_key || 'N/A'}</td>
+                            <td>${photoName || 'N/A'}</td>
+                            <td style="text-align: center;">${item.quantity || 0}</td>
+                        `;
+                        itemsTable.appendChild(row);
+                        console.log(`Item ${index + 1} ajouté (exemplaire ${i}):`, item.activity_key);
+                    } catch (error) {
+                        console.error(`Erreur item ${index + 1} (exemplaire ${i}):`, error, item);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error(`Erreur générale remplissage exemplaire ${i}:`, error);
         }
 
         // Le nettoyage est maintenant fait au début de fillPrintData()
@@ -256,9 +276,13 @@ function getItemsFromDOM(containerId) {
         console.warn(`Container ${containerId} non trouvé`);
         return [];
     }
-    
+
     // Retourner les éléments du tbody
     const items = Array.from(container.children);
+    console.log(`getItemsFromDOM(${containerId}): trouvé ${items.length} items`);
+    if (items.length === 0) {
+        console.log(`Container ${containerId} est vide. HTML:`, container.innerHTML);
+    }
     return items;
 }
 
