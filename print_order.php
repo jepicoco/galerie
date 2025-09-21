@@ -92,14 +92,37 @@ $printDate = date('d/m/Y H:i');
         }
 
         function printDirectly() {
-            // Imprimer directement la commande
-            printOrderSlip(reference);
+            // Préparer les données pour l'impression (format compatible)
+            const enrichedItems = Object.values(orderData.items).map(item => ({
+                ...item,
+                unit_price: item.unit_price,
+                subtotal: item.unit_price * item.quantity
+            }));
+
+            // Stocker les données dans le format attendu par printOrder()
+            printOrderData = {
+                reference: orderData.reference,
+                customer: orderData.customer,
+                items: enrichedItems,
+                created_at: orderData.created_at,
+                total_photos: Object.values(orderData.items).reduce((sum, item) => sum + item.quantity, 0),
+                total_amount: enrichedItems.reduce((sum, item) => sum + item.subtotal, 0),
+                is_update: false
+            };
+
+            // Imprimer directement
+            printOrder();
         }
 
-        // Auto-redirection après 3 secondes
+        // Auto-impression puis redirection
+        setTimeout(() => {
+            printDirectly();
+        }, 1000);
+
+        // Auto-redirection après 5 secondes
         setTimeout(() => {
             goToAdminOrders();
-        }, 3000);
+        }, 5000);
     </script>
 </body>
 </html>
