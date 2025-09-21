@@ -24,6 +24,9 @@ function printOrder() {
  * Imprimer le bon de commande
  */
 function printOrderSlip(reference = null) {
+    // Réinitialiser les compteurs de pages
+    globalPageNumber = 1;
+
     // Utiliser la référence passée en paramètre ou celle stockée globalement
     const orderReference = reference || currentOrderReference;
     
@@ -69,6 +72,12 @@ function printOrderSlip(reference = null) {
 
 // Remplir les données pour l'impression
 function fillPrintData(orderData) {
+    // NETTOYAGE GLOBAL : Supprimer toutes les pages de continuation existantes
+    const container = document.getElementById('print-container');
+    if (container) {
+        const continuationPages = container.querySelectorAll('.print-single-page:not(:first-child)');
+        continuationPages.forEach(page => page.remove());
+    }
 
     const now = new Date();
     const printDate = now.toLocaleDateString('fr-FR', {
@@ -148,10 +157,7 @@ function fillPrintData(orderData) {
             });
         }
 
-        // Nettoyer les anciennes pages
-        const container = document.getElementById('print-container');
-        const continuationPages = container.querySelectorAll('.print-single-page:not(:first-child)');
-        //continuationPages.forEach(page => page.remove());
+        // Le nettoyage est maintenant fait au début de fillPrintData()
         
     }
     
@@ -165,9 +171,13 @@ function fillPrintData(orderData) {
     }, 500);
 }
 
+// Variable globale pour le compteur de pages
+let globalPageNumber = 1;
+
 // Fonction principale pour gérer l'impression avec pages séparées
 function handlePrintOverflow() {
-    let pageNumber = 1;
+    // Réinitialiser explicitement le compteur de pages
+    globalPageNumber = 1;
     const maxItemsPerPage = 12;   // Nombre max d'éléments par page pour les pages photos
     const container = document.getElementById('print-container');
 
@@ -209,12 +219,12 @@ function handlePrintOverflow() {
 
 
     createPagesForCopy(
-        items1Container, 
-        items2Container, 
-        maxItemsPerPage, 
-        container, 
-        siteNameValue, 
-        printDate1, 
+        items1Container,
+        items2Container,
+        maxItemsPerPage,
+        container,
+        siteNameValue,
+        printDate1,
         orderDataForPages
     );
   
@@ -256,16 +266,16 @@ function createPagesForCopy(ItemsAdherents, ItemsOrganization, maxItemsPerPage, 
     // Créer au minimum une page, même si elle est vide
 
 console.log('Création des pages pour la copie');
-console.log(pageNumber);
+console.log('globalPageNumber:', globalPageNumber);
 
     if (ItemsAdherents.length === 0) {
         const photosPage = createPhotosPage(
-            type,
+            '',
             '', // Pas d'éléments
             siteNameValue,
             printDate,
             orderData,
-            1
+            globalPageNumber
         );
         container.insertAdjacentHTML('beforeend', photosPage);
         return;
@@ -282,9 +292,9 @@ console.log(pageNumber);
         
         // CORRECTION : Déterminer si on inverse selon le numéro de page
         // Page 1 = pas d'inversion, Page 2 = inversion, Page 3 = pas d'inversion, etc.
-        const shouldInvert = pageNumber % 2 === 0;
+        const shouldInvert = globalPageNumber % 2 === 0;
 
-        console.log(`Inversion ${shouldInvert} numéro de page ${pageNumber}`);
+        console.log(`Inversion ${shouldInvert} numéro de page ${globalPageNumber}`);
         
         let leftHTML, rightHTML;
         if (shouldInvert) {
@@ -304,35 +314,23 @@ console.log(pageNumber);
             printDate,
             printDate,
             orderData,
-            pageNumber,
+            globalPageNumber,
             shouldInvert
         );
-        
-        if(pageNumber>1)
+
+        if(globalPageNumber>1)
             container.insertAdjacentHTML('beforeend', photosPage);
-        
+
         startIndex = endIndex;
 
-        pageNumber++;
+        globalPageNumber++;
     }
 }
 
 // Appeler la fonction avant l'impression
 window.addEventListener('beforeprint', function() {
-    // Nettoyer d'abord les pages de continuation existantes
-    const container = document.getElementById('print-container');
-    console.log('Nettoyage des pages de continuation avant impression');
-    console.log('Container:', container);
-
-    // Supprimer toutes les pages de continuation sauf la première  
-    //const continuationPages = container.querySelectorAll('.print-single-page:not(:first-child)');
-    //continuationPages.forEach(page => page.remove());
-    
-    
-    // Puis gérer le débordement
-    handlePrintOverflow();
-
-    
+    // Le handlePrintOverflow est déjà appelé dans fillPrintData
+    console.log('Event beforeprint déclenché - pages déjà créées');
 });
 
 /**

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Print Functions</title>
+</head>
+<body>
+    <h1>Test des fonctions d'impression</h1>
+    <div id="output"></div>
+
+    <script src="js/script.js"></script>
+    <script>
+        // Test des données des 3 commandes problématiques
+        const testOrders = {
+            'CMD20250916141326': {
+                "reference": "CMD20250916141326",
+                "customer": {"firstname": "OCEANE", "lastname": "BERTHET"},
+                "items": {
+                    "LA MER/LA MER (39).JPG": {"activity_key": "LA MER", "photo_name": "LA MER (39).JPG", "quantity": 1, "pricing_type": "Photo"},
+                    "LA MER/LA MER (43).JPG": {"activity_key": "LA MER", "photo_name": "LA MER (43).JPG", "quantity": 1, "pricing_type": "Photo"}
+                }
+            },
+            'CMD20250916135423': {
+                "reference": "CMD20250916135423",
+                "customer": {"firstname": "fanny", "lastname": "locatelli"},
+                "items": {
+                    "Film du Gala/CLE USB.jpg": {"activity_key": "Film du Gala", "photo_name": "CLE USB.jpg", "quantity": 1, "pricing_type": "Clé USB"},
+                    "ENTRAIDE/ENTRAIDE (1).JPG": {"activity_key": "ENTRAIDE", "photo_name": "ENTRAIDE (1).JPG", "quantity": 2, "pricing_type": "Photo"}
+                }
+            }
+        };
+
+        let output = '';
+
+        // Test pour chaque commande
+        Object.keys(testOrders).forEach(ref => {
+            const order = testOrders[ref];
+            output += `<h2>${ref}</h2>`;
+
+            try {
+                // Test Object.values
+                const items = Object.values(order.items);
+                output += `Items count: ${items.length}<br>`;
+
+                // Test total photos calculation
+                const totalPhotos = items.reduce((sum, item) => sum + item.quantity, 0);
+                output += `Total photos calculation: ${totalPhotos}<br>`;
+
+                // Test GetTotalAmount function
+                if (typeof GetTotalAmount === 'function') {
+                    const totalAmount = GetTotalAmount(order);
+                    output += `GetTotalAmount result: ${totalAmount}<br>`;
+                } else {
+                    output += `❌ GetTotalAmount function not found<br>`;
+                }
+
+                // Test getPhotoName function
+                if (typeof getPhotoName === 'function') {
+                    const firstItem = items[0];
+                    const photoName = getPhotoName(firstItem);
+                    output += `getPhotoName result: ${photoName}<br>`;
+                } else {
+                    output += `❌ getPhotoName function not found<br>`;
+                }
+
+            } catch (error) {
+                output += `❌ Error: ${error.message}<br>`;
+            }
+
+            output += '<br>';
+        });
+
+        document.getElementById('output').innerHTML = output;
+    </script>
+</body>
+</html>
