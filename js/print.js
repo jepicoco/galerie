@@ -342,8 +342,8 @@ console.log('globalPageNumber:', globalPageNumber);
             shouldInvert
         );
 
-        if(globalPageNumber>1)
-            container.insertAdjacentHTML('beforeend', photosPage);
+        // Toujours ajouter les pages de photos (supprimer condition globalPageNumber>1)
+        container.insertAdjacentHTML('beforeend', photosPage);
 
         startIndex = endIndex;
 
