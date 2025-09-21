@@ -157,14 +157,14 @@
 </div>
 
 <script>
-let pageNumber = 1;
+let localPageNumber = 1;
 // Fonction pour créer une page avec les deux tableaux côte à côte
 function createPhotosPage(itemsAdherents, itemsOrganization, siteNameValue, printDate1, printDate2, orderData, pageNumber) {
-    const pageTitle = pageNumber > 1 ? ` (Page ${pageNumber-1})` : '';
-    
+    // La première page de photos est la "Page 1", la deuxième "Page 2", etc.
+    const pageTitle = ` (Page ${pageNumber})`;
+
     // Déterminer l'ordre selon la page (pair/impair)
-    // Page 1 = première page de résumé, donc commencer avec page 2 pour les photos
-    const actualPageNumber = pageNumber; // +1 car page 1 = résumé
+    const actualPageNumber = pageNumber;
     const isEvenPage = actualPageNumber % 2 === 0;
     
     let leftContent, rightContent;
