@@ -45,6 +45,68 @@ function is_admin(){
     return isset($_SESSION['admin']) && $_SESSION['admin'] === true;
 }
 
+/**
+ * Vérifier si les commandes sont closes
+ * Certaines IPs sont autorisées à outrepasser la clôture
+ * @return bool True si la date limite est dépassée, False sinon
+ */
+function are_orders_closed() {
+    // IPs autorisées à outrepasser la clôture
+    $whitelistedIps = [
+        '82.96.158.205',
+        // Plages IP locales
+        '192.168.', // Préfixe pour toutes les IP 192.168.X.X
+        '127.0.0.1', // Localhost
+        '::1'        // Localhost IPv6
+    ];
+
+    // Récupérer l'IP du client
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+
+    // Vérifier si l'IP est dans la whitelist
+    foreach ($whitelistedIps as $allowedIp) {
+        // Si c'est un préfixe (comme 192.168.), vérifier le début de l'IP
+        if (strpos($allowedIp, '.') === strlen($allowedIp) - 1) {
+            if (strpos($clientIp, $allowedIp) === 0) {
+                return false; // IP autorisée, commandes ouvertes
+            }
+        } else {
+            // Comparaison exacte
+            if ($clientIp === $allowedIp) {
+                return false; // IP autorisée, commandes ouvertes
+            }
+        }
+    }
+
+    // Si l'IP n'est pas whitelistée, vérifier la date
+    $closeDateTime = new DateTime(ORDERS_CLOSE_DATETIME);
+    $now = new DateTime();
+    return $now >= $closeDateTime;
+}
+
+/**
+ * Vérifier si on est en mode développement pour les commandes
+ * Si on est sur l'URL de développement (gala.fcsc), on est automatiquement en mode dev
+ * @return bool True si le mode dev est activé
+ */
+function is_orders_dev_mode() {
+    // Si on est sur l'URL de développement, on est automatiquement en mode dev
+    if (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'gala.fcsc') !== false) {
+        return true;
+    }
+    // Sinon, vérifier la constante de configuration
+    return defined('ORDERS_DEV_MODE') && ORDERS_DEV_MODE === true;
+}
+
+/**
+ * Vérifier si l'accès aux commandes est autorisé
+ * En mode dev, toujours autorisé. Sinon, vérifie si les commandes sont closes
+ * @return bool True si l'accès est autorisé
+ */
+function are_orders_allowed() {
+    return is_orders_dev_mode() || !are_orders_closed();
+}
+
 
 // Fonctions utilitaires (extraites de admin.php)
 function scanPhotosDirectories() {
